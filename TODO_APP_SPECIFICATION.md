@@ -621,7 +621,656 @@ app.listen(PORT, () => {
 });
 ```
 
-**Complete Step 8 (create auth middleware) and let me know when ready for the next step!**
+**✅ Phase 2 Authentication Complete!**
+
+---
+
+## Phase 2 Continuation - Todo CRUD Operations
+
+### Step 1: Create Todo Routes
+Create `src/routes/todos.ts` file for todo management:
+
+```typescript
+import express from 'express';
+import { PrismaClient } from '@prisma/client';
+import Joi from 'joi';
+import { authenticateToken, AuthenticatedRequest } from '../middleware/auth';
+
+const router = express.Router();
+const prisma = new PrismaClient();
+
+// Validation schemas
+const createTodoSchema = Joi.object({
+  title: Joi.string().required().trim().min(1),
+  description: Joi.string().optional().allow('').trim()
+});
+
+const updateTodoSchema = Joi.object({
+  title: Joi.string().optional().trim().min(1),
+  description: Joi.string().optional().allow('').trim(),
+  completed: Joi.boolean().optional()
+});
+
+// GET /api/todos - Get user's todos
+router.get('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  try {
+    const todos = await prisma.todo.findMany({
+      where: { userId: req.user!.id },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json({
+      message: 'Todos retrieved successfully',
+      todos
+    });
+  } catch (error) {
+    console.error('Get todos error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/todos - Create new todo
+router.post('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  try {
+    // Validate request body
+    const { error, value } = createTodoSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ error: error.details[0].message });
+    }
+
+    const { title, description } = value;
+
+    const todo = await prisma.todo.create({
+      data: {
+        title,
+        description: description || null,
+        userId: req.user!.id
+      }
+    });
+
+    res.status(201).json({
+      message: 'Todo created successfully',
+      todo
+    });
+  } catch (error) {
+    console.error('Create todo error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// PUT /api/todos/:id - Update todo
+router.put('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  try {
+    // Validate request body
+    const { error, value } = updateTodoSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ error: error.details[0].message });
+    }
+
+    const { id } = req.params;
+
+    // Check if todo exists and belongs to user
+    const existingTodo = await prisma.todo.findFirst({
+      where: { 
+        id,
+        userId: req.user!.id 
+      }
+    });
+
+    if (!existingTodo) {
+      return res.status(404).json({ error: 'Todo not found' });
+    }
+
+    // Update todo
+    const updatedTodo = await prisma.todo.update({
+      where: { id },
+      data: {
+        ...value,
+        description: value.description || null
+      }
+    });
+
+    res.json({
+      message: 'Todo updated successfully',
+      todo: updatedTodo
+    });
+  } catch (error) {
+    console.error('Update todo error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// DELETE /api/todos/:id - Delete todo
+router.delete('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if todo exists and belongs to user
+    const existingTodo = await prisma.todo.findFirst({
+      where: { 
+        id,
+        userId: req.user!.id 
+      }
+    });
+
+    if (!existingTodo) {
+      return res.status(404).json({ error: 'Todo not found' });
+    }
+
+    // Delete todo
+    await prisma.todo.delete({
+      where: { id }
+    });
+
+    res.json({
+      message: 'Todo deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete todo error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+export default router;
+```
+
+### Step 2: Update Server with Todo Routes
+Update `src/server.ts` to include todo routes:
+
+```typescript
+// Add this import with other route imports
+import todoRoutes from './routes/todos';
+
+// Add this route with other API routes
+app.use('/api/todos', todoRoutes);
+```
+
+**✅ Phase 2 Todo CRUD Complete!**
+
+---
+
+## Phase 3 Continuation - Backend Unit Testing
+
+### Step 1: Install Testing Dependencies
+Install Jest, Supertest and TypeScript testing dependencies:
+
+```bash
+cd backend
+npm install -D jest supertest @types/jest @types/supertest ts-jest
+```
+
+### Step 2: Configure Jest for TypeScript
+Create `jest.config.js` in the backend folder:
+
+```javascript
+module.exports = {
+  preset: 'ts-jest',
+  testEnvironment: 'node',
+  roots: ['<rootDir>/src', '<rootDir>/tests'],
+  testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
+  transform: {
+    '^.+\\.ts$': 'ts-jest',
+  },
+  collectCoverageFrom: [
+    'src/**/*.ts',
+    '!src/**/*.d.ts',
+  ],
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts']
+};
+```
+
+### Step 3: Create Test Setup File
+Create `tests/setup.ts` for test database configuration:
+
+```typescript
+import { PrismaClient } from '@prisma/client';
+import { execSync } from 'child_process';
+import path from 'path';
+
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: 'file:./test.db',
+    },
+  },
+});
+
+beforeAll(async () => {
+  // Create test database
+  execSync('npx prisma migrate deploy', {
+    env: { ...process.env, DATABASE_URL: 'file:./test.db' }
+  });
+});
+
+beforeEach(async () => {
+  // Clean database before each test
+  await prisma.todo.deleteMany({});
+  await prisma.user.deleteMany({});
+});
+
+afterAll(async () => {
+  // Cleanup
+  await prisma.$disconnect();
+});
+
+export { prisma };
+```
+
+### Step 4: Create Authentication Tests
+Create `tests/auth.test.ts`:
+
+```typescript
+import request from 'supertest';
+import { app } from '../src/server';
+import { prisma } from './setup';
+
+describe('Authentication Endpoints', () => {
+  describe('POST /api/auth/register', () => {
+    it('should register a new user successfully', async () => {
+      const userData = {
+        email: 'test@example.com',
+        password: 'password123',
+        name: 'Test User'
+      };
+
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send(userData)
+        .expect(201);
+
+      expect(response.body.message).toBe('User registered successfully');
+      expect(response.body.user).toHaveProperty('id');
+      expect(response.body.user.email).toBe(userData.email);
+      expect(response.body.user.name).toBe(userData.name);
+      expect(response.body).toHaveProperty('token');
+      expect(response.body.user).not.toHaveProperty('password');
+    });
+
+    it('should not register user with invalid email', async () => {
+      const userData = {
+        email: 'invalid-email',
+        password: 'password123'
+      };
+
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send(userData)
+        .expect(400);
+
+      expect(response.body.error).toBe('"email" must be a valid email');
+    });
+
+    it('should not register user with short password', async () => {
+      const userData = {
+        email: 'test@example.com',
+        password: '123'
+      };
+
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send(userData)
+        .expect(400);
+
+      expect(response.body.error).toBe('"password" length must be at least 6 characters long');
+    });
+
+    it('should not register user with duplicate email', async () => {
+      const userData = {
+        email: 'test@example.com',
+        password: 'password123'
+      };
+
+      // Register first user
+      await request(app)
+        .post('/api/auth/register')
+        .send(userData)
+        .expect(201);
+
+      // Try to register with same email
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send(userData)
+        .expect(400);
+
+      expect(response.body.error).toBe('User already exists with this email');
+    });
+  });
+
+  describe('POST /api/auth/login', () => {
+    beforeEach(async () => {
+      // Create a test user
+      await request(app)
+        .post('/api/auth/register')
+        .send({
+          email: 'test@example.com',
+          password: 'password123',
+          name: 'Test User'
+        });
+    });
+
+    it('should login user with valid credentials', async () => {
+      const loginData = {
+        email: 'test@example.com',
+        password: 'password123'
+      };
+
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send(loginData)
+        .expect(200);
+
+      expect(response.body.message).toBe('Login successful');
+      expect(response.body.user.email).toBe(loginData.email);
+      expect(response.body).toHaveProperty('token');
+      expect(response.body.user).not.toHaveProperty('password');
+    });
+
+    it('should not login with invalid email', async () => {
+      const loginData = {
+        email: 'nonexistent@example.com',
+        password: 'password123'
+      };
+
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send(loginData)
+        .expect(400);
+
+      expect(response.body.error).toBe('Invalid email or password');
+    });
+
+    it('should not login with invalid password', async () => {
+      const loginData = {
+        email: 'test@example.com',
+        password: 'wrongpassword'
+      };
+
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send(loginData)
+        .expect(400);
+
+      expect(response.body.error).toBe('Invalid email or password');
+    });
+  });
+});
+```
+
+### Step 5: Create Todo Tests
+Create `tests/todos.test.ts`:
+
+```typescript
+import request from 'supertest';
+import { app } from '../src/server';
+import { prisma } from './setup';
+
+describe('Todo Endpoints', () => {
+  let authToken: string;
+  let userId: string;
+
+  beforeEach(async () => {
+    // Register and login a test user
+    const registerResponse = await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: 'test@example.com',
+        password: 'password123',
+        name: 'Test User'
+      });
+
+    authToken = registerResponse.body.token;
+    userId = registerResponse.body.user.id;
+  });
+
+  describe('GET /api/todos', () => {
+    it('should return empty todos for new user', async () => {
+      const response = await request(app)
+        .get('/api/todos')
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(200);
+
+      expect(response.body.message).toBe('Todos retrieved successfully');
+      expect(response.body.todos).toEqual([]);
+    });
+
+    it('should require authentication', async () => {
+      await request(app)
+        .get('/api/todos')
+        .expect(401);
+    });
+
+    it('should return user specific todos', async () => {
+      // Create todos for the authenticated user
+      await prisma.todo.createMany({
+        data: [
+          { title: 'Todo 1', userId },
+          { title: 'Todo 2', userId }
+        ]
+      });
+
+      // Create todo for another user
+      const otherUser = await prisma.user.create({
+        data: {
+          email: 'other@example.com',
+          password: 'hashedpassword',
+          name: 'Other User'
+        }
+      });
+      await prisma.todo.create({
+        data: { title: 'Other Todo', userId: otherUser.id }
+      });
+
+      const response = await request(app)
+        .get('/api/todos')
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(200);
+
+      expect(response.body.todos).toHaveLength(2);
+      expect(response.body.todos[0].title).toBe('Todo 2'); // Ordered by createdAt desc
+      expect(response.body.todos[1].title).toBe('Todo 1');
+    });
+  });
+
+  describe('POST /api/todos', () => {
+    it('should create a new todo', async () => {
+      const todoData = {
+        title: 'New Todo',
+        description: 'Todo description'
+      };
+
+      const response = await request(app)
+        .post('/api/todos')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(todoData)
+        .expect(201);
+
+      expect(response.body.message).toBe('Todo created successfully');
+      expect(response.body.todo.title).toBe(todoData.title);
+      expect(response.body.todo.description).toBe(todoData.description);
+      expect(response.body.todo.completed).toBe(false);
+      expect(response.body.todo.userId).toBe(userId);
+    });
+
+    it('should create todo without description', async () => {
+      const todoData = { title: 'Simple Todo' };
+
+      const response = await request(app)
+        .post('/api/todos')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(todoData)
+        .expect(201);
+
+      expect(response.body.todo.description).toBeNull();
+    });
+
+    it('should not create todo with empty title', async () => {
+      const todoData = { title: '' };
+
+      const response = await request(app)
+        .post('/api/todos')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(todoData)
+        .expect(400);
+
+      expect(response.body.error).toContain('length must be at least 1');
+    });
+
+    it('should require authentication', async () => {
+      await request(app)
+        .post('/api/todos')
+        .send({ title: 'New Todo' })
+        .expect(401);
+    });
+  });
+
+  describe('PUT /api/todos/:id', () => {
+    let todoId: string;
+
+    beforeEach(async () => {
+      const todo = await prisma.todo.create({
+        data: { title: 'Test Todo', userId }
+      });
+      todoId = todo.id;
+    });
+
+    it('should update todo successfully', async () => {
+      const updateData = {
+        title: 'Updated Todo',
+        description: 'Updated description',
+        completed: true
+      };
+
+      const response = await request(app)
+        .put(`/api/todos/${todoId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updateData)
+        .expect(200);
+
+      expect(response.body.message).toBe('Todo updated successfully');
+      expect(response.body.todo.title).toBe(updateData.title);
+      expect(response.body.todo.completed).toBe(true);
+    });
+
+    it('should not update non-existent todo', async () => {
+      const response = await request(app)
+        .put('/api/todos/non-existent-id')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ title: 'Updated' })
+        .expect(404);
+
+      expect(response.body.error).toBe('Todo not found');
+    });
+
+    it('should not update other users todo', async () => {
+      // Create another user and their todo
+      const otherUser = await prisma.user.create({
+        data: {
+          email: 'other@example.com',
+          password: 'hashedpassword',
+          name: 'Other User'
+        }
+      });
+      const otherTodo = await prisma.todo.create({
+        data: { title: 'Other Todo', userId: otherUser.id }
+      });
+
+      const response = await request(app)
+        .put(`/api/todos/${otherTodo.id}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ title: 'Hacked' })
+        .expect(404);
+
+      expect(response.body.error).toBe('Todo not found');
+    });
+  });
+
+  describe('DELETE /api/todos/:id', () => {
+    let todoId: string;
+
+    beforeEach(async () => {
+      const todo = await prisma.todo.create({
+        data: { title: 'Test Todo', userId }
+      });
+      todoId = todo.id;
+    });
+
+    it('should delete todo successfully', async () => {
+      const response = await request(app)
+        .delete(`/api/todos/${todoId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(200);
+
+      expect(response.body.message).toBe('Todo deleted successfully');
+
+      // Verify todo is deleted
+      const deletedTodo = await prisma.todo.findUnique({
+        where: { id: todoId }
+      });
+      expect(deletedTodo).toBeNull();
+    });
+
+    it('should not delete non-existent todo', async () => {
+      const response = await request(app)
+        .delete('/api/todos/non-existent-id')
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(404);
+
+      expect(response.body.error).toBe('Todo not found');
+    });
+  });
+});
+```
+
+### Step 6: Update Package.json Scripts
+Update the scripts in `package.json`:
+
+```json
+{
+  "scripts": {
+    "dev": "nodemon src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  }
+}
+```
+
+### Step 7: Export App for Testing
+Update `src/server.ts` to export the app:
+
+```typescript
+// At the end of server.ts, before app.listen()
+export { app };
+
+// Keep the app.listen() for when running normally
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📊 Health check: http://localhost:${PORT}/health`);
+    console.log(`🔐 Auth endpoints: http://localhost:${PORT}/api/auth/register & /api/auth/login`);
+  });
+}
+```
+
+### Step 8: Run Tests
+Execute the test suite:
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage
+```
+
+**Complete these steps to add comprehensive backend testing!**
+
+
 
 
 

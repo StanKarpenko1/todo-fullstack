@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 
 // Import routes
 import authRoutes from './routers/auth';
+import todoRoutes from './routers/todos';
 
 // Load environment variables
 dotenv.config();
@@ -35,6 +36,7 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
+app.use('/api/todos', todoRoutes);
 
 // Start server
 app.listen(PORT, () => {

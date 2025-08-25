@@ -1,0 +1,160 @@
+### Variables
+@baseURL = http://localhost:5000
+@contentType = application/json
+
+### Health Check
+GET {{baseURL}}/health
+
+### Register User
+POST {{baseURL}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "test1@example.com",
+  "password": "password123",
+  "name": "Test User"
+}
+
+### Login User
+POST {{baseURL}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+### Test Invalid Registration (short password)
+POST {{baseURL}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "test2@example.com",
+  "password": "123"
+}
+
+### Test Invalid Login
+POST {{baseURL}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "test@example.com",
+  "password": "wrongpassword"
+}
+
+### Test Duplicate Registration
+POST {{baseURL}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "test@example.com",
+  "password": "password123",
+  "name": "Duplicate User"
+}
+
+###############################################
+### TODO ENDPOINTS TESTS
+### NOTE: Get a token from login first, then replace {{token}} below
+###############################################
+
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5MmZkYzkwOS1iNGI1LTQ1ZGEtOTRjOC01NDY1ZjQ2ODg3YWYiLCJpYXQiOjE3NTYxMjk2OTEsImV4cCI6MTc1NjIxNjA5MX0.t_6Tf3z1_h18_sT7MPVBZIpE0noJDlFJIUVPZ5Ezi_c
+
+### Get User's Todos (Empty initially)
+GET {{baseURL}}/api/todos
+Authorization: Bearer {{token}}
+
+### Create First Todo
+POST {{baseURL}}/api/todos
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+  "title": "Learn TypeScript",
+  "description": "Complete the TypeScript tutorial and build a project"
+}
+
+### Create Second Todo (No description)
+POST {{baseURL}}/api/todos
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+  "title": "Buy groceries"
+}
+
+### Create Third Todo
+POST {{baseURL}}/api/todos
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+  "title": "Write unit tests",
+  "description": "Add comprehensive tests for the todo API"
+}
+
+### Get All Todos (Should show 3 todos)
+GET {{baseURL}}/api/todos
+Authorization: Bearer {{token}}
+
+### Update Todo - Mark as completed
+PUT {{baseURL}}/api/todos/20529a5e-9dd6-4f43-9d22-3ca2e97ecece
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+  "completed": true
+}
+
+### Update Todo - Change title and description
+PUT {{baseURL}}/api/todos/20529a5e-9dd6-4f43-9d22-3ca2e97ecece
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+  "title": "Learn Advanced TypeScript",
+  "description": "Deep dive into generics, decorators, and advanced patterns",
+  "completed": false
+}
+
+### Delete Todo
+DELETE {{baseURL}}/api/todos/20529a5e-9dd6-4f43-9d22-3ca2e97ecece
+Authorization: Bearer {{token}}
+
+### Test Invalid Todo Creation (empty title)
+POST {{baseURL}}/api/todos
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+  "title": "",
+  "description": "This should fail"
+}
+
+### Test Invalid Todo Creation (missing title)
+POST {{baseURL}}/api/todos
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+  "description": "This should also fail"
+}
+
+### Test Unauthorized Access (no token)
+GET {{baseURL}}/api/todos
+
+### Test Invalid Token
+GET {{baseURL}}/api/todos
+Authorization: Bearer invalid-token-here
+
+### Test Update Non-existent Todo
+PUT {{baseURL}}/api/todos/non-existent-id
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+  "title": "This should fail"
+}
+
+### Test Delete Non-existent Todo
+DELETE {{baseURL}}/api/todos/non-existent-id
+Authorization: Bearer {{token}}
