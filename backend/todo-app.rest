@@ -57,7 +57,7 @@ Content-Type: {{contentType}}
 ### NOTE: Get a token from login first, then replace {{token}} below
 ###############################################
 
-@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5MmZkYzkwOS1iNGI1LTQ1ZGEtOTRjOC01NDY1ZjQ2ODg3YWYiLCJpYXQiOjE3NTYxMjk2OTEsImV4cCI6MTc1NjIxNjA5MX0.t_6Tf3z1_h18_sT7MPVBZIpE0noJDlFJIUVPZ5Ezi_c
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5MmZkYzkwOS1iNGI1LTQ1ZGEtOTRjOC01NDY1ZjQ2ODg3YWYiLCJpYXQiOjE3NTYyNTI0NjgsImV4cCI6MTc1NjMzODg2OH0.iYbg0BlIN4xPAr8o3iob0yYrGODA6_-3ZpohhkJZqbA
 
 ### Get User's Todos (Empty initially)
 GET {{baseURL}}/api/todos
