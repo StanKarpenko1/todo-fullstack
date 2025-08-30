@@ -1,6 +1,5 @@
 import { PrismaClient } from '@prisma/client';
 import { execSync } from 'child_process';
-import path from 'path';
 
 const prisma = new PrismaClient({
   datasources: {
@@ -11,7 +10,7 @@ const prisma = new PrismaClient({
 });
 
 beforeAll(async () => {
-  // Create test database
+  // Set up test database
   execSync('npx prisma migrate deploy', {
     env: { ...process.env, DATABASE_URL: 'file:./test.db' }
   });
@@ -24,7 +23,6 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-  // Cleanup
   await prisma.$disconnect();
 });
 

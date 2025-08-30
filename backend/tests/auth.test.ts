@@ -1,8 +1,7 @@
 import request from 'supertest';
 import { app } from '../src/server';
-import { prisma } from './setup';
 
-describe ('Authentication Endpoints', () => {
+describe('Authentication Endpoints', () => {
   describe('POST /api/auth/register', () => {
     it('should register a new user successfully', async () => {
       const userData = {
