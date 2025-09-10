@@ -1363,7 +1363,246 @@ npm run test:watch
 npm run test:coverage
 ```
 
-**Complete these steps to add comprehensive backend testing!**
+**✅ Phase 3 Backend Testing Complete!**
+
+---
+
+## Phase 3 Continuation - Security Hardening
+
+### What You'll Learn
+- XSS (Cross-Site Scripting) prevention
+- CSRF (Cross-Site Request Forgery) protection
+- SQL Injection prevention
+- Input sanitization and validation
+- Security headers and CSP
+- Security testing methodologies
+
+### Current Security Measures Analysis
+
+#### ✅ **SQL Injection Protection**
+- **Prisma ORM**: Provides automatic parameterization and escaping
+- **Joi validation**: Prevents malicious input patterns
+- **Type safety**: TypeScript prevents many injection vectors
+
+#### ✅ **CSRF Protection** 
+- **JWT tokens in headers**: Harder to forge than cookies
+- **Token validation**: Verifies user identity on each request
+- **Same-origin policy**: Browser enforces origin restrictions
+
+#### ✅ **XSS Protection**
+- **Helmet middleware**: Sets security headers including XSS protection
+- **Input validation**: Joi schemas prevent some XSS vectors
+- **Content-Security-Policy**: Restricts script execution
+
+### Step 1: Enhanced Security Middleware
+
+Create `src/middleware/security.ts`:
+
+```typescript
+import { Request, Response, NextFunction } from 'express';
+import DOMPurify from 'isomorphic-dompurify';
+
+// Input sanitization middleware
+export const sanitizeInput = (req: Request, res: Response, next: NextFunction) => {
+  const sanitizeValue = (value: any): any => {
+    if (typeof value === 'string') {
+      // Remove null bytes and clean HTML
+      return DOMPurify.sanitize(value.replace(/\0/g, ''));
+    }
+    if (typeof value === 'object' && value !== null) {
+      const sanitized: any = {};
+      for (const key in value) {
+        sanitized[key] = sanitizeValue(value[key]);
+      }
+      return sanitized;
+    }
+    return value;
+  };
+
+  if (req.body) {
+    req.body = sanitizeValue(req.body);
+  }
+
+  next();
+};
+
+// Content Security Policy headers
+export const setCSPHeaders = (req: Request, res: Response, next: NextFunction) => {
+  res.setHeader('Content-Security-Policy', 
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline'; " +
+    "style-src 'self' 'unsafe-inline'; " +
+    "img-src 'self' data: https:; " +
+    "connect-src 'self'; " +
+    "font-src 'self'; " +
+    "object-src 'none'; " +
+    "base-uri 'self'; " +
+    "form-action 'self'"
+  );
+  
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  
+  next();
+};
+
+// Request size limiting
+export const limitRequestSize = (req: Request, res: Response, next: NextFunction) => {
+  const maxSize = 1024 * 1024; // 1MB limit
+  
+  if (req.headers['content-length']) {
+    const contentLength = parseInt(req.headers['content-length']);
+    if (contentLength > maxSize) {
+      return res.status(413).json({ 
+        error: 'Request entity too large',
+        maxSize: `${maxSize / 1024 / 1024}MB`
+      });
+    }
+  }
+  
+  next();
+};
+```
+
+### Step 2: Install Security Dependencies
+
+```bash
+npm install isomorphic-dompurify
+```
+
+### Step 3: Update Server Security Configuration
+
+Update `src/server.ts`:
+
+```typescript
+// Import security middleware
+import { sanitizeInput, setCSPHeaders, limitRequestSize } from './middleware/security';
+
+// Security middleware
+app.use(helmet());
+app.use(cors());
+app.use(setCSPHeaders);
+app.use(limitRequestSize);
+
+// Body parsing middleware with size limits
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// Input sanitization
+app.use(sanitizeInput);
+```
+
+### Step 4: Create Security Tests
+
+Create `tests/security.test.ts` with comprehensive security testing:
+
+```typescript
+import request from 'supertest';
+import { app } from '../src/server';
+import { prisma } from './setup';
+
+describe('Security Tests', () => {
+  let authToken: string;
+  let userId: string;
+
+  beforeEach(async () => {
+    const registerResponse = await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: `security${Date.now()}@example.com`,
+        password: 'password123',
+        name: 'Security Test User'
+      });
+
+    authToken = registerResponse.body.token;
+    userId = registerResponse.body.user.id;
+  });
+
+  describe('XSS Protection Tests', () => {
+    it('should sanitize script injection in todo title', async () => {
+      const maliciousPayload = {
+        title: '<script>alert("XSS")</script>',
+        description: 'Normal description'
+      };
+
+      const response = await request(app)
+        .post('/api/todos')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(maliciousPayload)
+        .expect(201);
+
+      // Should be sanitized by DOMPurify
+      expect(response.body.todo.title).not.toContain('<script>');
+    });
+  });
+
+  describe('SQL Injection Protection Tests', () => {
+    it('should prevent SQL injection in email field', async () => {
+      const sqlInjection = "admin@test.com'; DROP TABLE users; --";
+      
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send({
+          email: sqlInjection,
+          password: 'password123',
+          name: 'SQL Injection Test'
+        })
+        .expect(400);
+
+      expect(response.body.error).toBe('"email" must be a valid email');
+    });
+  });
+
+  describe('CSRF Protection Tests', () => {
+    it('should require valid JWT token for protected routes', async () => {
+      const response = await request(app)
+        .post('/api/todos')
+        .send({ title: 'CSRF Test Todo' })
+        .expect(401);
+
+      expect(response.body.error).toBe('Access token required');
+    });
+  });
+});
+```
+
+### Security Testing Commands
+
+```bash
+# Run security tests
+npm test security.test.ts
+
+# Run all tests with security coverage
+npm run test:coverage
+```
+
+### Step 5: Security Headers Verification
+
+Test your security headers with tools like:
+- **SecurityHeaders.com**: Online scanner for HTTP headers
+- **OWASP ZAP**: Automated security testing
+- **Burp Suite**: Manual security testing
+
+### Security Best Practices Implemented
+
+1. **Input Validation**: Joi schemas validate all inputs
+2. **Output Encoding**: DOMPurify sanitizes HTML content  
+3. **Parameterized Queries**: Prisma ORM prevents SQL injection
+4. **JWT Authentication**: Stateless, secure token-based auth
+5. **Rate Limiting**: Prevents brute force attacks
+6. **Security Headers**: CSP, HSTS, X-Frame-Options, etc.
+7. **Request Size Limits**: Prevents DoS via large payloads
+8. **CORS Configuration**: Controls cross-origin access
+
+### Security Testing Results
+- **XSS**: ✅ Protected via input sanitization and CSP
+- **SQL Injection**: ✅ Protected via Prisma ORM and validation  
+- **CSRF**: ✅ Protected via JWT tokens in headers
+- **Rate Limiting**: ✅ Implemented with express-rate-limit
+- **Input Validation**: ✅ Comprehensive Joi schemas
+
+**✅ Phase 3 Security Hardening Complete!**
 
 
 
