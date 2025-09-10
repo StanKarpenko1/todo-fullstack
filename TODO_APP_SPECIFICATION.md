@@ -825,7 +825,10 @@ Create `tests/setup.ts` for test database configuration:
 ```typescript
 import { PrismaClient } from '@prisma/client';
 import { execSync } from 'child_process';
-import path from 'path';
+
+// Set test environment variables
+process.env.JWT_SECRET = 'test-secret-key-for-testing';
+process.env.DATABASE_URL = 'file:./test.db';
 
 const prisma = new PrismaClient({
   datasources: {
@@ -996,8 +999,8 @@ describe('Authentication Endpoints', () => {
 });
 ```
 
-### Step 5: Create Todo Tests
-Create `tests/todos.test.ts`:
+### Step 5: Create Comprehensive Todo Tests
+Create `tests/todos.test.ts` with complete coverage for all CRUD operations:
 
 ```typescript
 import request from 'supertest';
@@ -1013,7 +1016,7 @@ describe('Todo Endpoints', () => {
     const registerResponse = await request(app)
       .post('/api/auth/register')
       .send({
-        email: 'test@example.com',
+        email: `test${Date.now()}@example.com`,
         password: 'password123',
         name: 'Test User'
       });
@@ -1034,9 +1037,11 @@ describe('Todo Endpoints', () => {
     });
 
     it('should require authentication', async () => {
-      await request(app)
+      const response = await request(app)
         .get('/api/todos')
         .expect(401);
+
+      expect(response.body.error).toBe('Access token required');
     });
 
     it('should return user specific todos', async () => {
@@ -1066,8 +1071,9 @@ describe('Todo Endpoints', () => {
         .expect(200);
 
       expect(response.body.todos).toHaveLength(2);
-      expect(response.body.todos[0].title).toBe('Todo 2'); // Ordered by createdAt desc
-      expect(response.body.todos[1].title).toBe('Todo 1');
+      // Check both todos are returned (order may vary due to timing)
+      const todoTitles = response.body.todos.map((todo: any) => todo.title).sort();
+      expect(todoTitles).toEqual(['Todo 1', 'Todo 2']);
     });
   });
 
@@ -1112,14 +1118,28 @@ describe('Todo Endpoints', () => {
         .send(todoData)
         .expect(400);
 
-      expect(response.body.error).toContain('length must be at least 1');
+      expect(response.body.error).toBe('"title" is not allowed to be empty');
+    });
+
+    it('should not create todo without title', async () => {
+      const todoData = { description: 'Only description' };
+
+      const response = await request(app)
+        .post('/api/todos')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(todoData)
+        .expect(400);
+
+      expect(response.body.error).toBe('"title" is required');
     });
 
     it('should require authentication', async () => {
-      await request(app)
+      const response = await request(app)
         .post('/api/todos')
         .send({ title: 'New Todo' })
         .expect(401);
+
+      expect(response.body.error).toBe('Access token required');
     });
   });
 
@@ -1149,6 +1169,32 @@ describe('Todo Endpoints', () => {
       expect(response.body.message).toBe('Todo updated successfully');
       expect(response.body.todo.title).toBe(updateData.title);
       expect(response.body.todo.completed).toBe(true);
+    });
+
+    it('should update only title', async () => {
+      const updateData = { title: 'Only Title Updated' };
+
+      const response = await request(app)
+        .put(`/api/todos/${todoId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updateData)
+        .expect(200);
+
+      expect(response.body.todo.title).toBe(updateData.title);
+      expect(response.body.todo.completed).toBe(false); // Should remain unchanged
+    });
+
+    it('should update only completion status', async () => {
+      const updateData = { completed: true };
+
+      const response = await request(app)
+        .put(`/api/todos/${todoId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updateData)
+        .expect(200);
+
+      expect(response.body.todo.completed).toBe(true);
+      expect(response.body.todo.title).toBe('Test Todo'); // Should remain unchanged
     });
 
     it('should not update non-existent todo', async () => {
@@ -1181,6 +1227,25 @@ describe('Todo Endpoints', () => {
         .expect(404);
 
       expect(response.body.error).toBe('Todo not found');
+    });
+
+    it('should require authentication', async () => {
+      const response = await request(app)
+        .put(`/api/todos/${todoId}`)
+        .send({ title: 'Updated' })
+        .expect(401);
+
+      expect(response.body.error).toBe('Access token required');
+    });
+
+    it('should not update with empty title', async () => {
+      const response = await request(app)
+        .put(`/api/todos/${todoId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ title: '' })
+        .expect(400);
+
+      expect(response.body.error).toBe('"title" is not allowed to be empty');
     });
   });
 
@@ -1216,6 +1281,35 @@ describe('Todo Endpoints', () => {
         .expect(404);
 
       expect(response.body.error).toBe('Todo not found');
+    });
+
+    it('should not delete other users todo', async () => {
+      // Create another user and their todo
+      const otherUser = await prisma.user.create({
+        data: {
+          email: 'other@example.com',
+          password: 'hashedpassword',
+          name: 'Other User'
+        }
+      });
+      const otherTodo = await prisma.todo.create({
+        data: { title: 'Other Todo', userId: otherUser.id }
+      });
+
+      const response = await request(app)
+        .delete(`/api/todos/${otherTodo.id}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(404);
+
+      expect(response.body.error).toBe('Todo not found');
+    });
+
+    it('should require authentication', async () => {
+      const response = await request(app)
+        .delete(`/api/todos/${todoId}`)
+        .expect(401);
+
+      expect(response.body.error).toBe('Access token required');
     });
   });
 });

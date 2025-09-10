@@ -1,6 +1,10 @@
 import { PrismaClient } from '@prisma/client';
 import { execSync } from 'child_process';
 
+// Set test environment variables
+process.env.JWT_SECRET = 'test-secret-key-for-testing';
+process.env.DATABASE_URL = 'file:./test.db';
+
 const prisma = new PrismaClient({
   datasources: {
     db: {

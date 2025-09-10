@@ -41,7 +41,7 @@ describe('Auth Middleware', () => {
     // Generate a valid token
     validToken = jwt.sign(
       { userId: testUser.id },
-      process.env.JWT_SECRET || 'test-secret',
+      process.env.JWT_SECRET!,
       { expiresIn: '1h' }
     );
   });
@@ -110,7 +110,7 @@ describe('Auth Middleware', () => {
     it('should deny access with expired token', async () => {
       const expiredToken = jwt.sign(
         { userId: testUser.id },
-        process.env.JWT_SECRET || 'test-secret',
+        process.env.JWT_SECRET!,
         { expiresIn: '-1h' } // Already expired
       );
 
