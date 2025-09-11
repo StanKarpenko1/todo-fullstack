@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import DOMPurify from 'isomorphic-dompurify';
 
-// Input sanitization middleware
+// Input sanitization middleware 
 export const sanitizeInput = (req: Request, res: Response, next: NextFunction) => {
   const sanitizeValue = (value: any): any => {
     if (typeof value === 'string') {

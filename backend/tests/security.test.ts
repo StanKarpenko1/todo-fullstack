@@ -21,29 +21,23 @@ describe('Security Tests', () => {
   });
 
   describe('XSS Protection Tests', () => {
-    it('should not allow script injection in todo title', async () => {
+    it('should sanitize and reject empty script injection in todo title', async () => {
       const maliciousPayload = {
         title: '<script>alert("XSS")</script>',
         description: 'Normal description'
       };
 
+      // DOMPurify sanitizes script tags to empty string, then Joi validation rejects empty title
       const response = await request(app)
         .post('/api/todos')
         .set('Authorization', `Bearer ${authToken}`)
         .send(maliciousPayload)
-        .expect(201);
+        .expect(400);
 
-      // Should store the raw value (not execute script)
-      expect(response.body.todo.title).toBe('<script>alert("XSS")</script>');
-      
-      // Verify it's stored in database correctly
-      const storedTodo = await prisma.todo.findUnique({
-        where: { id: response.body.todo.id }
-      });
-      expect(storedTodo?.title).toBe('<script>alert("XSS")</script>');
+      expect(response.body.error).toBe('"title" is not allowed to be empty');
     });
 
-    it('should not allow HTML injection in user name', async () => {
+    it('should sanitize dangerous attributes in user name', async () => {
       const maliciousPayload = {
         email: `xss${Date.now()}@example.com`,
         password: 'password123',
@@ -55,11 +49,11 @@ describe('Security Tests', () => {
         .send(maliciousPayload)
         .expect(201);
 
-      // Should store the raw value
-      expect(response.body.user.name).toBe('<img src="x" onerror="alert(1)">');
+      // DOMPurify removes dangerous onerror attribute
+      expect(response.body.user.name).toBe('<img src="x">');
     });
 
-    it('should sanitize todo description with HTML tags', async () => {
+    it('should sanitize dangerous iframe in todo description', async () => {
       const maliciousPayload = {
         title: 'Normal Title',
         description: '<iframe src="javascript:alert(\'XSS\')"></iframe>'
@@ -71,8 +65,8 @@ describe('Security Tests', () => {
         .send(maliciousPayload)
         .expect(201);
 
-      // Should store the raw value (frontend responsibility to sanitize display)
-      expect(response.body.todo.description).toBe('<iframe src="javascript:alert(\'XSS\')"></iframe>');
+      // DOMPurify removes dangerous iframe with javascript, stored as null
+      expect(response.body.todo.description).toBe(null);
     });
   });
 
@@ -218,7 +212,7 @@ describe('Security Tests', () => {
       expect(response.body.todo.title).toBeDefined();
     });
 
-    it('should prevent null byte injection', async () => {
+    it('should sanitize null byte injection with XSS', async () => {
       const nullBytePayload = {
         title: 'Normal title\x00<script>alert("XSS")</script>',
         description: 'Normal description'
@@ -230,8 +224,8 @@ describe('Security Tests', () => {
         .send(nullBytePayload)
         .expect(201);
 
-      // Should store the payload as-is (handling depends on database)
-      expect(response.body.todo.title).toContain('Normal title');
+      // DOMPurify removes null bytes and script tags, leaves clean title
+      expect(response.body.todo.title).toBe('Normal title');
     });
 
     it('should handle Unicode and special characters safely', async () => {
