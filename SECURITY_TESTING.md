@@ -99,6 +99,251 @@ Security testing is a type of software testing that identifies vulnerabilities, 
     - Application fetching remote resources without validating URL
     - Example: App making requests to internal services
 
+### Security Testing Strategy: Continuous vs Periodic
+
+Understanding **when** and **how often** to run different types of security tests is crucial for an effective security program. Not all security tests should run with every commit.
+
+#### Continuous Security Tests (Run with Every Build)
+
+These tests should be part of your regular unit/integration test suite and run automatically:
+
+##### Functional Security Tests:
+```javascript
+// ✅ Run with npm test - these test your CODE
+describe('Security Functions', () => {
+  it('should sanitize XSS inputs', () => {
+    // Tests that DOMPurify middleware works
+  });
+
+  it('should prevent SQL injection', () => {
+    // Tests that Prisma/validation prevents SQL injection
+  });
+
+  it('should validate JWT tokens', () => {
+    // Tests that auth middleware works correctly
+  });
+});
+```
+
+**Why Continuous:**
+- **Code changes** might accidentally remove security middleware
+- **Dependency updates** might break security functions
+- **Refactoring** might bypass input validation
+- **Fast execution** (< 1 second per test)
+- **Deterministic results** (same input = same output)
+- **Prevent security regressions** before they reach production
+
+##### Examples from Our Todo App:
+```javascript
+// backend/tests/security.test.ts - ✅ Runs with npm test
+- XSS sanitization tests
+- SQL injection prevention tests
+- JWT validation tests
+- Input validation security tests
+- CSRF protection tests
+```
+
+#### Periodic Security Tests (Run Manually or Scheduled)
+
+These tests are more comprehensive but slower, and often test **infrastructure** rather than code:
+
+##### Infrastructure Security Tests:
+```bash
+# 🔄 Run weekly/monthly - these test your DEPLOYMENT
+npm audit                    # Dependency vulnerabilities
+docker run owasp/zap         # DAST scanning
+nmap localhost               # Port scanning
+testssl.sh domain.com        # TLS configuration
+```
+
+**Why Periodic:**
+- **Slow execution** (minutes to hours)
+- **Environment dependent** (requires running application)
+- **External dependencies** (network, third-party tools)
+- **Infrastructure focus** (deployment, configuration)
+- **Comprehensive coverage** (full application attack surface)
+
+##### Frequency Guidelines:
+- **Daily**: Dependency scans (`npm audit`)
+- **Weekly**: DAST scans (OWASP ZAP)
+- **Monthly**: Full penetration testing
+- **Quarterly**: External security audits
+- **On deployment**: SSL/TLS configuration checks
+
+#### Security Testing Pyramid
+
+```
+                    🔺
+                   /   \
+              Manual/    Pen Testing
+             /    \      (Quarterly)
+        DAST /      \
+           /  SAST   \   (Weekly/Monthly)
+          /          \
+    Unit Tests        Integration Tests
+   (Continuous)       (Continuous)
+    ─────────────────────────────────
+```
+
+##### Layer Breakdown:
+
+**🟢 Bottom Layer - Unit/Integration Tests (Continuous)**
+```javascript
+// Fast, focused, run every commit
+it('should prevent XSS in user input', () => {
+  const sanitized = sanitizeInput('<script>alert("xss")</script>');
+  expect(sanitized).not.toContain('<script>');
+});
+```
+
+**🟡 Middle Layer - SAST/DAST (Periodic)**
+```bash
+# Automated but slower, run weekly
+npm audit                    # Static analysis
+owasp-zap-baseline.py       # Dynamic analysis
+snyk test                   # Dependency analysis
+```
+
+**🔴 Top Layer - Manual Testing (Scheduled)**
+```bash
+# Human expertise, run monthly/quarterly
+- Penetration testing
+- Code reviews
+- Architecture reviews
+- Threat modeling sessions
+```
+
+#### Practical CI/CD Pipeline Example
+
+##### .github/workflows/security.yml:
+```yaml
+name: Security Pipeline
+
+on: [push, pull_request]
+
+jobs:
+  # ✅ Continuous - Every commit
+  unit-security-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run security unit tests
+        run: npm test -- --testNamePattern="Security"
+
+  # ✅ Continuous - Every commit
+  dependency-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+
+  # 🔄 Periodic - Only on main branch
+  dast-scan:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Start application
+        run: npm start &
+      - name: Run OWASP ZAP scan
+        run: docker run owasp/zap2docker-stable zap-baseline.py -t http://localhost:3000
+
+  # 🔄 Scheduled - Weekly
+  full-security-scan:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - name: Comprehensive security scan
+        run: |
+          npm audit
+          docker run owasp/zap2docker-stable zap-full-scan.py -t http://localhost:3000
+```
+
+#### What Goes Where: Decision Matrix
+
+| Test Type | Example | Frequency | Runs In |
+|-----------|---------|-----------|---------|
+| **Input Validation** | XSS sanitization | Every commit | `npm test` |
+| **Authentication Logic** | JWT validation | Every commit | `npm test` |
+| **Authorization Logic** | RBAC tests | Every commit | `npm test` |
+| **Dependency Scan** | `npm audit` | Every commit | CI/CD |
+| **DAST Baseline** | OWASP ZAP basic | Weekly | CI/CD scheduled |
+| **DAST Full** | OWASP ZAP complete | Monthly | Manual/scheduled |
+| **Penetration Test** | External audit | Quarterly | Manual |
+| **SSL/TLS Config** | Certificate check | On deployment | Manual |
+
+#### Common Anti-Patterns to Avoid
+
+##### ❌ Wrong: Running Slow Tests Continuously
+```yaml
+# This will make developers avoid running tests
+jobs:
+  every-commit:
+    steps:
+      - name: Full pen test on every commit  # ❌ Too slow
+        run: full-security-audit.sh
+```
+
+##### ❌ Wrong: Only Manual Security Testing
+```javascript
+// No automated security tests
+// Security bugs slip through until manual audit
+```
+
+##### ✅ Right: Balanced Approach
+```yaml
+# Fast feedback loop + comprehensive coverage
+jobs:
+  fast-security:
+    steps:
+      - name: Security unit tests      # ✅ 30 seconds
+      - name: Dependency check        # ✅ 1 minute
+
+  comprehensive-security:
+    if: scheduled
+    steps:
+      - name: Full DAST scan          # ✅ 30 minutes, but not blocking
+```
+
+#### Team Responsibilities
+
+##### Developers:
+- Write security unit tests for new features
+- Fix issues found in continuous tests immediately
+- Review periodic test results weekly
+
+##### DevOps/Security Team:
+- Configure and maintain DAST tools
+- Schedule and monitor periodic scans
+- Coordinate penetration testing
+- Set security policies and thresholds
+
+##### Product/Management:
+- Budget for security tools and audits
+- Prioritize security issues appropriately
+- Approve scheduled security maintenance windows
+
+#### Measuring Security Testing Effectiveness
+
+##### Metrics to Track:
+```javascript
+// Continuous metrics (automated)
+- Security test coverage percentage
+- Time to fix security issues (MTTR)
+- Number of security issues caught in development vs production
+
+// Periodic metrics (manual)
+- Vulnerabilities found in pen tests
+- Time between security audits
+- Security debt accumulation
+```
+
+##### Success Indicators:
+- **High confidence in deployments** - because continuous tests catch regressions
+- **Fewer security issues in production** - because comprehensive testing catches edge cases
+- **Faster incident response** - because teams understand the security posture
+- **Better security culture** - because security is integrated into daily workflow
+
 ---
 
 ## Manual Security Testing
@@ -184,9 +429,406 @@ curl -I http://localhost:3000
 # Should include:
 # X-Frame-Options: DENY
 # X-Content-Type-Options: nosniff
-# X-XSS-Protection: 1; mode=block
-# Strict-Transport-Security: max-age=31536000
+# Strict-Transport-Security: max-age=31536000 (production only)
 # Content-Security-Policy: default-src 'self'
+# Note: X-XSS-Protection header is deprecated and should NOT be present in modern apps
+```
+
+### HTTPS/TLS Implementation and Testing
+
+#### Why HTTPS Matters for Security Learning
+
+HTTPS provides critical security benefits that every developer should understand:
+
+- **Encryption in Transit**: Prevents eavesdropping on sensitive data (passwords, JWTs, personal info)
+- **Data Integrity**: Ensures data isn't tampered with during transmission
+- **Authentication**: Verifies server identity to prevent man-in-the-middle attacks
+- **Browser Security Features**: Enables secure cookies, service workers, geolocation APIs
+- **SEO and Trust**: Modern browsers mark HTTP sites as "Not Secure"
+
+#### Development HTTPS Setup
+
+##### Option 1: Self-Signed Certificates (Learning)
+
+```bash
+# Generate self-signed certificate for localhost
+openssl req -x509 -newkey rsa:4096 -keyout server.key -out server.cert -days 365 -nodes -subj '/CN=localhost'
+
+# Or use mkcert for better browser trust
+# Install mkcert first: https://github.com/FiloSottile/mkcert
+mkcert -install
+mkcert localhost 127.0.0.1 ::1
+```
+
+##### Option 2: mkcert (Recommended for Development)
+
+```bash
+# Install mkcert (macOS)
+brew install mkcert
+mkcert -install
+
+# Generate certificates
+mkcert localhost 127.0.0.1 ::1
+
+# This creates:
+# localhost+2.pem (certificate)
+# localhost+2-key.pem (private key)
+```
+
+#### Implementing HTTPS in Node.js
+
+##### Basic HTTPS Server Setup:
+
+```javascript
+// src/https-server.ts
+import https from 'https';
+import fs from 'fs';
+import path from 'path';
+import { app } from './server';
+
+const startHttpsServer = () => {
+  // Development HTTPS configuration
+  if (process.env.NODE_ENV === 'development') {
+    try {
+      const options = {
+        key: fs.readFileSync(path.join(__dirname, '../certs/localhost+2-key.pem')),
+        cert: fs.readFileSync(path.join(__dirname, '../certs/localhost+2.pem'))
+      };
+
+      const httpsServer = https.createServer(options, app);
+      const httpsPort = process.env.HTTPS_PORT || 5443;
+
+      httpsServer.listen(httpsPort, () => {
+        console.log(`🔒 HTTPS Server running on https://localhost:${httpsPort}`);
+        console.log(`🔐 Health check: https://localhost:${httpsPort}/health`);
+      });
+
+      return httpsServer;
+    } catch (error) {
+      console.warn('HTTPS certificates not found, falling back to HTTP');
+      console.log('Generate certificates with: mkcert localhost 127.0.0.1 ::1');
+      return null;
+    }
+  }
+};
+
+export { startHttpsServer };
+```
+
+##### Enhanced Server with HTTP Redirect:
+
+```javascript
+// src/secure-server.ts
+import express from 'express';
+import http from 'http';
+import https from 'https';
+import fs from 'fs';
+
+const createSecureServer = (app: express.Application) => {
+  const httpPort = process.env.PORT || 5000;
+  const httpsPort = process.env.HTTPS_PORT || 5443;
+
+  // HTTP server that redirects to HTTPS
+  const httpApp = express();
+  httpApp.use((req, res) => {
+    if (process.env.NODE_ENV === 'production') {
+      return res.redirect(301, `https://${req.get('Host')}${req.url}`);
+    }
+    // In development, allow HTTP for testing
+    res.status(200).json({
+      message: 'HTTP server running. Use HTTPS for secure connections.',
+      httpsUrl: `https://localhost:${httpsPort}${req.url}`
+    });
+  });
+
+  // Start HTTP server
+  http.createServer(httpApp).listen(httpPort, () => {
+    console.log(`🌐 HTTP Server running on http://localhost:${httpPort}`);
+  });
+
+  // Start HTTPS server if certificates exist
+  try {
+    const options = {
+      key: fs.readFileSync('certs/localhost+2-key.pem'),
+      cert: fs.readFileSync('certs/localhost+2.pem')
+    };
+
+    https.createServer(options, app).listen(httpsPort, () => {
+      console.log(`🔒 HTTPS Server running on https://localhost:${httpsPort}`);
+    });
+  } catch (error) {
+    console.warn('HTTPS certificates not found');
+  }
+};
+```
+
+#### HTTPS Testing
+
+##### Certificate Validation Testing:
+
+```bash
+# Test certificate validity
+openssl s_client -connect localhost:5443 -servername localhost
+
+# Check certificate details
+openssl x509 -in certs/localhost+2.pem -text -noout
+
+# Test with curl
+curl -v https://localhost:5443/health
+
+# Test certificate expiration
+openssl x509 -in certs/localhost+2.pem -noout -dates
+```
+
+##### Browser Testing Checklist:
+
+1. **Certificate Trust**: Green padlock in address bar
+2. **Mixed Content**: No HTTP resources on HTTPS pages
+3. **HSTS Headers**: Strict-Transport-Security header present
+4. **Secure Cookies**: Cookies marked with Secure flag
+5. **TLS Version**: Using TLS 1.2 or higher
+
+##### Automated HTTPS Testing:
+
+```javascript
+// tests/https.test.ts
+import https from 'https';
+import { promisify } from 'util';
+
+describe('HTTPS Configuration', () => {
+  it('should serve content over HTTPS', async () => {
+    const options = {
+      hostname: 'localhost',
+      port: 5443,
+      path: '/health',
+      method: 'GET',
+      rejectUnauthorized: false // For self-signed certs in testing
+    };
+
+    const response = await new Promise((resolve, reject) => {
+      const req = https.request(options, (res) => {
+        resolve(res);
+      });
+      req.on('error', reject);
+      req.end();
+    });
+
+    expect(response.statusCode).toBe(200);
+  });
+
+  it('should include HSTS headers', async () => {
+    const response = await request(httpsApp)
+      .get('/health')
+      .trustLocalhost(true);
+
+    expect(response.headers['strict-transport-security']).toBeDefined();
+    expect(response.headers['strict-transport-security']).toContain('max-age=');
+  });
+
+  it('should set secure cookie flags', async () => {
+    const response = await request(httpsApp)
+      .post('/api/auth/login')
+      .send({ email: 'test@example.com', password: 'password' })
+      .trustLocalhost(true);
+
+    const cookies = response.headers['set-cookie'];
+    if (cookies) {
+      expect(cookies.some(cookie => cookie.includes('Secure'))).toBe(true);
+    }
+  });
+});
+```
+
+#### Production HTTPS Strategies
+
+##### 1. Cloud Platform SSL (Recommended for Beginners)
+
+```javascript
+// Most platforms handle this automatically
+// Heroku, Vercel, Netlify, Railway provide HTTPS out of the box
+
+// Your app just needs to trust forwarded headers
+app.set('trust proxy', 1);
+
+// Enforce HTTPS in production
+if (process.env.NODE_ENV === 'production') {
+  app.use((req, res, next) => {
+    if (req.header('x-forwarded-proto') !== 'https') {
+      return res.redirect(`https://${req.get('host')}${req.url}`);
+    }
+    next();
+  });
+}
+```
+
+##### 2. Reverse Proxy (Nginx/Caddy)
+
+```nginx
+# nginx.conf
+server {
+    listen 443 ssl http2;
+    server_name yourdomain.com;
+
+    ssl_certificate /path/to/your/cert.pem;
+    ssl_certificate_key /path/to/your/private.key;
+
+    # Strong SSL configuration
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+
+    location / {
+        proxy_pass http://localhost:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# Redirect HTTP to HTTPS
+server {
+    listen 80;
+    server_name yourdomain.com;
+    return 301 https://$server_name$request_uri;
+}
+```
+
+##### 3. Let's Encrypt with Certbot
+
+```bash
+# Install certbot
+sudo apt install certbot python3-certbot-nginx
+
+# Obtain certificate
+sudo certbot --nginx -d yourdomain.com
+
+# Auto-renewal (add to crontab)
+0 12 * * * /usr/bin/certbot renew --quiet
+```
+
+#### Common HTTPS Issues and Solutions
+
+##### Mixed Content Errors:
+
+```javascript
+// Problem: HTTP resources on HTTPS pages
+<script src="http://example.com/script.js"></script> // ❌
+
+// Solution: Use HTTPS or protocol-relative URLs
+<script src="https://example.com/script.js"></script> // ✅
+<script src="//example.com/script.js"></script> // ✅ (inherits protocol)
+```
+
+##### Certificate Trust Issues:
+
+```javascript
+// Development workaround for self-signed certificates
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'; // ❌ Never in production!
+
+// Better: Use proper development certificates with mkcert
+// Or configure your test environment to trust the CA
+```
+
+##### HSTS Preload Issues:
+
+```javascript
+// Modern Helmet configuration - disable deprecated features
+app.use(helmet({
+  // Disable deprecated X-XSS-Protection header
+  xssFilter: false,
+
+  // Be careful with HSTS preload in development
+  hsts: {
+    maxAge: process.env.NODE_ENV === 'production' ? 31536000 : 0,
+    includeSubDomains: true,
+    preload: process.env.NODE_ENV === 'production'
+  },
+
+  // CSP provides better XSS protection than the deprecated header
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"]
+    }
+  }
+}));
+```
+
+#### HTTPS Performance Considerations
+
+##### HTTP/2 Benefits:
+
+```javascript
+// HTTP/2 is automatically enabled with HTTPS in modern Node.js
+const http2 = require('http2');
+
+// Create HTTP/2 secure server
+const server = http2.createSecureServer({
+  key: fs.readFileSync('private-key.pem'),
+  cert: fs.readFileSync('cert.pem')
+}, app);
+```
+
+##### TLS Termination:
+
+```javascript
+// For high-traffic applications, terminate TLS at load balancer
+// Keep internal communication on HTTP for performance
+// Ensure secure internal network
+```
+
+#### HTTPS Learning Exercise
+
+##### Exercise: Implement Full HTTPS Stack
+
+1. **Generate Development Certificates**:
+```bash
+mkdir certs
+cd certs
+mkcert localhost 127.0.0.1 ::1
+```
+
+2. **Update Server Configuration**:
+```javascript
+// Add HTTPS support to your existing server
+// Implement HTTP to HTTPS redirect
+// Add HSTS headers
+// Test with self-signed certificates
+```
+
+3. **Update Security Middleware**:
+```javascript
+// Ensure secure cookies in HTTPS
+app.use(session({
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // HTTPS only in prod
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+```
+
+4. **Test HTTPS Implementation**:
+```bash
+# Test HTTPS endpoint
+curl -k https://localhost:5443/health
+
+# Test HTTP redirect
+curl -I http://localhost:5000/health
+
+# Test security headers
+curl -k -I https://localhost:5443/health | grep -i security
+```
+
+5. **Write HTTPS Tests**:
+```javascript
+// Add tests for HTTPS functionality
+// Test certificate validation
+// Test security headers
+// Test secure cookies
 ```
 
 ---
@@ -533,37 +1175,66 @@ it('should enforce rate limiting on auth endpoints', async () => {
 
 ### Exercise 3: Implement Security Headers
 
-#### Helmet.js Integration:
+#### Modern Helmet.js Integration:
 ```javascript
 const helmet = require('helmet');
 
 app.use(helmet({
+  // Disable deprecated X-XSS-Protection header
+  xssFilter: false,
+
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"]
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"]
     }
   },
-  hsts: {
+
+  // Only enable HSTS in production
+  hsts: process.env.NODE_ENV === 'production' ? {
     maxAge: 31536000,
     includeSubDomains: true,
     preload: true
+  } : false,
+
+  // Configure referrer policy
+  referrerPolicy: {
+    policy: "strict-origin-when-cross-origin"
   }
 }));
 ```
 
+**Key Changes in Modern Helmet:**
+- ❌ **Removed X-XSS-Protection** - Deprecated and potentially harmful
+- ✅ **CSP handles XSS protection** - More robust and modern
+- ✅ **Conditional HSTS** - Only in production to avoid development issues
+- ✅ **Comprehensive CSP directives** - Better coverage than basic setup
+
 #### Test Case:
 ```javascript
-it('should include security headers', async () => {
+it('should include modern security headers', async () => {
   const response = await request(app)
     .get('/api/health')
     .expect(200);
 
   expect(response.headers['x-frame-options']).toBe('DENY');
   expect(response.headers['x-content-type-options']).toBe('nosniff');
-  expect(response.headers['strict-transport-security']).toContain('max-age=31536000');
+  expect(response.headers['content-security-policy']).toContain("default-src 'self'");
+
+  // X-XSS-Protection should NOT be present (deprecated)
+  expect(response.headers['x-xss-protection']).toBeUndefined();
+
+  // HSTS only in production
+  if (process.env.NODE_ENV === 'production') {
+    expect(response.headers['strict-transport-security']).toContain('max-age=31536000');
+  }
 });
 ```
 

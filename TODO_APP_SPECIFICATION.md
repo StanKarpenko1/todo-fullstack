@@ -88,23 +88,32 @@ A production-ready todo application built as a learning project using modern web
 6. Docker containerization
 7. Deployment preparation
 
-## Project Structure
+## Project Structure (MVC Pattern)
 ```
 todo-app/
-├── backend/
+├── backend/                    # Node.js + Express API
 │   ├── src/
-│   │   ├── controllers/
-│   │   ├── middleware/
-│   │   ├── routes/
-│   │   ├── utils/
-│   │   └── server.ts
-│   ├── prisma/
-│   │   ├── schema.prisma
-│   │   └── migrations/
-│   ├── tests/
+│   │   ├── controllers/        # Business logic (MVC Controller)
+│   │   │   ├── auth.controller.ts
+│   │   │   └── todos.controller.ts
+│   │   ├── middleware/         # Cross-cutting concerns
+│   │   │   ├── auth.ts
+│   │   │   └── security.ts
+│   │   ├── routers/           # Route definitions only (MVC View layer)
+│   │   │   ├── auth.ts
+│   │   │   └── todos.ts
+│   │   ├── models/            # Data models (MVC Model - via Prisma)
+│   │   ├── utils/             # Helper functions
+│   │   └── server.ts          # Application entry point
+│   ├── prisma/                # Database layer
+│   │   ├── schema.prisma      # Database schema
+│   │   └── migrations/        # Database migrations
+│   ├── tests/                 # Test suites
+│   │   ├── unit/              # Unit tests (controllers)
+│   │   └── integration/       # Integration tests (routes)
 │   ├── package.json
 │   └── tsconfig.json
-├── frontend/
+├── frontend/                   # React + TypeScript SPA
 │   ├── src/
 │   │   ├── components/
 │   │   ├── pages/
@@ -115,6 +124,11 @@ todo-app/
 │   └── vite.config.ts
 └── README.md
 ```
+
+### MVC Architecture Explanation:
+- **Model**: Prisma schema and database operations
+- **View**: API routes (JSON responses, not HTML views)
+- **Controller**: Business logic and request handling
 
 
 
@@ -167,11 +181,20 @@ npm install -D typescript @types/node @types/express @types/cors @types/bcryptjs
 ### Step 5: Setup TypeScript Config
 Create `tsconfig.json` in backend folder.
 
-### Step 6: Create Backend Source Structure
-Create the folder structure inside backend:
+### Step 6: Create Backend MVC Structure
+Create the MVC folder structure inside backend:
 ```bash
-mkdir src src/controllers src/middleware src/models src/routes src/utils tests
+mkdir src src/controllers src/middleware src/models src/routers src/utils tests tests/unit tests/integration
 ```
+
+**Folder Purposes:**
+- `controllers/` - Business logic and request handling
+- `routers/` - Route definitions and HTTP endpoint mapping
+- `middleware/` - Cross-cutting concerns (auth, security, logging)
+- `models/` - Data models (Prisma handles this mostly)
+- `utils/` - Helper functions and utilities
+- `tests/unit/` - Unit tests for controllers (mocked dependencies)
+- `tests/integration/` - Integration tests for API endpoints
 
 ### Step 7: Install Frontend Dependencies
 Navigate to frontend and install additional dependencies:
@@ -294,8 +317,18 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Security middleware
-app.use(helmet());
+// Modern security middleware with proper configuration
+app.use(helmet({
+  xssFilter: false,  // Disable deprecated X-XSS-Protection
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"]
+    }
+  }
+}));
 app.use(cors());
 
 // Rate limiting
@@ -438,8 +471,167 @@ export const authenticateToken = async (
 };
 ```
 
-### Step 9: Create Authentication Routes
-Create `src/routes/auth.ts` file:
+### Step 9: Create Authentication with MVC Pattern
+
+#### 9a. Create Authentication Controller
+Create `src/controllers/auth.controller.ts`:
+
+```typescript
+import { Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { PrismaClient } from '@prisma/client';
+import Joi from 'joi';
+
+const prisma = new PrismaClient();
+
+// Validation schemas
+const registerSchema = Joi.object({
+    email: Joi.string().email().required(),
+    password: Joi.string().min(6).required(),
+    name: Joi.string().optional()
+});
+
+const loginSchema = Joi.object({
+    email: Joi.string().email().required(),
+    password: Joi.string().required()
+});
+
+// Helper function to generate JWT token
+const generateToken = (userId: string): string => {
+    return jwt.sign(
+        { userId },
+        process.env.JWT_SECRET!,
+        { expiresIn: process.env.JWT_EXPIRES_IN as any || '24h' }
+    );
+};
+
+// Register controller
+export const register = async (req: Request, res: Response) => {
+    try {
+        // Validate request body
+        const { error, value } = registerSchema.validate(req.body);
+        if (error) {
+            return res.status(400).json({ error: error.details[0].message });
+        }
+
+        const { email, password, name } = value;
+
+        // Check if user already exists
+        const existingUser = await prisma.user.findUnique({
+            where: { email }
+        });
+
+        if (existingUser) {
+            return res.status(400).json({ error: 'User already exists with this email' });
+        }
+
+        // Hash password
+        const saltRounds = 12;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+        // Create user
+        const user = await prisma.user.create({
+            data: {
+                email,
+                password: hashedPassword,
+                name
+            },
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                createdAt: true
+            }
+        });
+
+        // Generate JWT token
+        const token = generateToken(user.id);
+
+        res.status(201).json({
+            message: 'User registered successfully',
+            user,
+            token
+        });
+    } catch (error) {
+        console.error('Registration error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+// Login controller
+export const login = async (req: Request, res: Response) => {
+    try {
+        // Validate request body
+        const { error, value } = loginSchema.validate(req.body);
+        if (error) {
+            return res.status(400).json({ error: error.details[0].message });
+        }
+
+        const { email, password } = value;
+
+        // Find user
+        const user = await prisma.user.findUnique({
+            where: { email }
+        });
+
+        if (!user) {
+            return res.status(400).json({ error: 'Invalid email or password' });
+        }
+
+        // Verify password
+        const isValidPassword = await bcrypt.compare(password, user.password);
+        if (!isValidPassword) {
+            return res.status(400).json({ error: 'Invalid email or password' });
+        }
+
+        // Generate JWT token
+        const token = generateToken(user.id);
+
+        res.json({
+            message: 'Login successful',
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name
+            },
+            token
+        });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+```
+
+#### 9b. Create Authentication Routes
+Create `src/routers/auth.ts` file:
+
+```typescript
+import express from 'express';
+import { register, login } from '../controllers/auth.controller';
+
+const router = express.Router();
+
+// Authentication routes - Clean and simple!
+router.post('/register', register);
+router.post('/login', login);
+
+export default router;
+```
+
+**Key Benefits of MVC Pattern:**
+- **Separation of Concerns**: Business logic in controllers, route definitions in routers
+- **Testability**: Controllers can be unit tested independently
+- **Maintainability**: Easy to find and modify business logic
+- **Reusability**: Controller functions can be reused across different routes
+
+**Compare with Old "Fat Routes" Pattern:**
+- **Before**: 100+ lines of mixed concerns in router file
+- **After**: 10 lines of clean route definitions
+
+#### 9c. Old Pattern (DO NOT USE)
+Here's what we replaced - the old "fat routes" pattern that mixed business logic with routing:
 
 ```typescript
 import express from 'express';
@@ -571,6 +763,18 @@ router.post('/login', async (req, res) => {
 export default router;
 ```
 
+**Why We Don't Use This Pattern Anymore:**
+- ❌ **Mixed concerns** - Routing + business logic + validation + database operations
+- ❌ **Hard to test** - Need full HTTP requests to test business logic
+- ❌ **Poor reusability** - Business logic tied to HTTP layer
+- ❌ **Difficult maintenance** - Finding logic scattered across route handlers
+
+**Modern MVC Pattern Benefits:**
+- ✅ **Clean separation** - Routes handle HTTP, controllers handle business logic
+- ✅ **Unit testable** - Test controllers with mocked dependencies
+- ✅ **Maintainable** - Business logic centralized in controllers
+- ✅ **Professional** - Industry-standard architecture
+
 ### Step 10: Update Server with Auth Routes
 Update `src/server.ts` to include authentication routes:
 
@@ -590,8 +794,18 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Security middleware
-app.use(helmet());
+// Modern security middleware with proper configuration
+app.use(helmet({
+  xssFilter: false,  // Disable deprecated X-XSS-Protection
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"]
+    }
+  }
+}));
 app.use(cors());
 
 // Rate limiting
@@ -789,7 +1003,13 @@ app.use('/api/todos', todoRoutes);
 
 ---
 
-## Phase 3 Continuation - Backend Unit Testing
+## Phase 3 Continuation - MVC Testing Strategy
+
+### Testing Architecture with MVC Pattern
+
+**Two Types of Tests:**
+- **Unit Tests** - Test controllers in isolation (mocked dependencies)
+- **Integration Tests** - Test API endpoints end-to-end
 
 ### Step 1: Install Testing Dependencies
 Install Jest, Supertest and TypeScript testing dependencies:
@@ -806,10 +1026,12 @@ Create `jest.config.js` in the backend folder:
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/src', '<rootDir>/tests'],
-  testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
+  roots: ['<rootDir>/tests'],
+  testMatch: ['**/*.test.ts'],
   transform: {
-    '^.+\\.ts$': 'ts-jest',
+    '^.+\\.ts$': ['ts-jest', {
+      tsconfig: '<rootDir>/tests/tsconfig.json'
+    }]
   },
   collectCoverageFrom: [
     'src/**/*.ts',
@@ -819,8 +1041,152 @@ module.exports = {
 };
 ```
 
-### Step 3: Create Test Setup File
-Create `tests/setup.ts` for test database configuration:
+### Step 3: Create Proper Test Structure
+
+#### 3a. Unit Tests (NEW - Recommended)
+Create `tests/unit/controllers/auth.controller.test.ts`:
+
+```typescript
+import { Request, Response } from 'express';
+import { register, login } from '../../../src/controllers/auth.controller';
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+
+// Mock all external dependencies
+jest.mock('@prisma/client');
+jest.mock('bcryptjs');
+jest.mock('jsonwebtoken');
+
+const mockPrisma = {
+  user: {
+    findUnique: jest.fn(),
+    create: jest.fn()
+  }
+} as unknown as PrismaClient;
+
+describe('Auth Controller - Unit Tests', () => {
+  let req: Partial<Request>;
+  let res: Partial<Response>;
+  let statusMock: jest.Mock;
+  let jsonMock: jest.Mock;
+
+  beforeEach(() => {
+    // Mock request and response objects
+    statusMock = jest.fn().mockReturnThis();
+    jsonMock = jest.fn();
+
+    req = {
+      body: {}
+    };
+
+    res = {
+      status: statusMock,
+      json: jsonMock
+    };
+
+    // Clear all mocks
+    jest.clearAllMocks();
+  });
+
+  describe('register', () => {
+    it('should register new user successfully', async () => {
+      const userData = {
+        email: 'test@example.com',
+        password: 'password123',
+        name: 'Test User'
+      };
+
+      req.body = userData;
+
+      // Mock Prisma calls
+      (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+      (mockPrisma.user.create as jest.Mock).mockResolvedValue({
+        id: 'user-123',
+        email: userData.email,
+        name: userData.name
+      });
+
+      // Mock bcrypt and jwt
+      (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-password');
+      (jwt.sign as jest.Mock).mockReturnValue('jwt-token');
+
+      await register(req as Request, res as Response);
+
+      expect(statusMock).toHaveBeenCalledWith(201);
+      expect(jsonMock).toHaveBeenCalledWith({
+        message: 'User registered successfully',
+        user: expect.objectContaining({
+          email: userData.email
+        }),
+        token: 'jwt-token'
+      });
+    });
+
+    it('should return error for existing user', async () => {
+      req.body = {
+        email: 'existing@example.com',
+        password: 'password123'
+      };
+
+      // Mock existing user
+      (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({
+        id: 'existing-user'
+      });
+
+      await register(req as Request, res as Response);
+
+      expect(statusMock).toHaveBeenCalledWith(400);
+      expect(jsonMock).toHaveBeenCalledWith({
+        error: 'User already exists with this email'
+      });
+    });
+  });
+});
+```
+
+**Benefits of Unit Tests:**
+- ⚡ **Fast** - No database, no HTTP requests
+- 🎯 **Focused** - Test only business logic
+- 🔒 **Reliable** - No external dependencies
+- 🐛 **Easy debugging** - Isolated failures
+
+#### 3b. Integration Tests (Current approach)
+Create `tests/integration/auth.test.ts` for API endpoint testing:
+
+```typescript
+import request from 'supertest';
+import { app } from '../../src/server';
+import { prisma } from '../setup';
+
+describe('Auth Endpoints - Integration Tests', () => {
+  beforeEach(async () => {
+    // Clean database
+    await prisma.user.deleteMany({});
+  });
+
+  describe('POST /api/auth/register', () => {
+    it('should register new user', async () => {
+      const userData = {
+        email: 'test@example.com',
+        password: 'password123',
+        name: 'Test User'
+      };
+
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send(userData)
+        .expect(201);
+
+      expect(response.body.user.email).toBe(userData.email);
+      expect(response.body.token).toBeDefined();
+    });
+  });
+});
+```
+
+### Step 4: Create Test Setup File
+Create `tests/setup.ts` for integration test database configuration:
 
 ```typescript
 import { PrismaClient } from '@prisma/client';
@@ -1390,9 +1756,9 @@ npm run test:coverage
 - **Same-origin policy**: Browser enforces origin restrictions
 
 #### ✅ **XSS Protection**
-- **Helmet middleware**: Sets security headers including XSS protection
-- **Input validation**: Joi schemas prevent some XSS vectors
-- **Content-Security-Policy**: Restricts script execution
+- **Helmet middleware**: Sets CSP headers (modern XSS protection, X-XSS-Protection disabled as deprecated)
+- **Input sanitization**: DOMPurify sanitizes malicious HTML/script content
+- **Content Security Policy**: Prevents inline script execution and restricts resource loading
 
 ### Step 1: Enhanced Security Middleware
 
@@ -1426,26 +1792,8 @@ export const sanitizeInput = (req: Request, res: Response, next: NextFunction) =
   next();
 };
 
-// Content Security Policy headers
-export const setCSPHeaders = (req: Request, res: Response, next: NextFunction) => {
-  res.setHeader('Content-Security-Policy', 
-    "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline'; " +
-    "style-src 'self' 'unsafe-inline'; " +
-    "img-src 'self' data: https:; " +
-    "connect-src 'self'; " +
-    "font-src 'self'; " +
-    "object-src 'none'; " +
-    "base-uri 'self'; " +
-    "form-action 'self'"
-  );
-  
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  
-  next();
-};
+// Note: CSP and other security headers are now handled by Helmet configuration
+// This keeps the middleware focused on application-specific security functions
 
 // Request size limiting
 export const limitRequestSize = (req: Request, res: Response, next: NextFunction) => {
@@ -1476,13 +1824,27 @@ npm install isomorphic-dompurify
 Update `src/server.ts`:
 
 ```typescript
-// Import security middleware
-import { sanitizeInput, setCSPHeaders, limitRequestSize } from './middleware/security';
+// Import security middleware (CSP now handled by Helmet)
+import { sanitizeInput, limitRequestSize } from './middleware/security';
 
-// Security middleware
-app.use(helmet());
+// Modern security middleware with proper configuration
+app.use(helmet({
+  xssFilter: false,  // Disable deprecated X-XSS-Protection
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"]
+    }
+  }
+}));
 app.use(cors());
-app.use(setCSPHeaders);
 app.use(limitRequestSize);
 
 // Body parsing middleware with size limits
@@ -1591,12 +1953,12 @@ Test your security headers with tools like:
 3. **Parameterized Queries**: Prisma ORM prevents SQL injection
 4. **JWT Authentication**: Stateless, secure token-based auth
 5. **Rate Limiting**: Prevents brute force attacks
-6. **Security Headers**: CSP, HSTS, X-Frame-Options, etc.
+6. **Security Headers**: Modern CSP (no deprecated X-XSS-Protection), HSTS, X-Frame-Options, etc.
 7. **Request Size Limits**: Prevents DoS via large payloads
 8. **CORS Configuration**: Controls cross-origin access
 
 ### Security Testing Results
-- **XSS**: ✅ Protected via input sanitization and CSP
+- **XSS**: ✅ Protected via input sanitization (DOMPurify) and modern CSP headers (no deprecated X-XSS-Protection)
 - **SQL Injection**: ✅ Protected via Prisma ORM and validation  
 - **CSRF**: ✅ Protected via JWT tokens in headers
 - **Rate Limiting**: ✅ Implemented with express-rate-limit

@@ -25,26 +25,8 @@ export const sanitizeInput = (req: Request, res: Response, next: NextFunction) =
   next();
 };
 
-// Content Security Policy headers
-export const setCSPHeaders = (req: Request, res: Response, next: NextFunction) => {
-  res.setHeader('Content-Security-Policy', 
-    "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline'; " +
-    "style-src 'self' 'unsafe-inline'; " +
-    "img-src 'self' data: https:; " +
-    "connect-src 'self'; " +
-    "font-src 'self'; " +
-    "object-src 'none'; " +
-    "base-uri 'self'; " +
-    "form-action 'self'"
-  );
-  
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  
-  next();
-};
+// Note: CSP and other security headers are now handled by Helmet in server.ts
+// This keeps the middleware focused on application-specific security functions
 
 // Request size limiting
 export const limitRequestSize = (req: Request, res: Response, next: NextFunction) => {
