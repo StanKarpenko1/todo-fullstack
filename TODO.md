@@ -155,19 +155,52 @@ resetTokenExpires: DateTime?
 
 ## Session Wrap-up
 
-✅ **Completed Recently:**
-- Refactored to MVC pattern with controllers
-- Modernized Helmet security configuration
-- Deleted old integration tests
-- Planned SQLite → PostgreSQL → Docker migration path
+### ✅ **Completed This Session (2025-11-04):**
+1. **Analyzed project structure** - Full-stack Todo app with MVC pattern
+2. **Cleaned up tests:**
+   - Deleted `auth.test.ts`, `todos.test.ts`, `security.test.ts` (integration tests)
+   - Kept `middleware.test.ts` (auth middleware tests)
+   - Ready to write proper unit tests from scratch
+3. **Documented strategy:**
+   - Created `INDEX.md` with quick start guide
+   - Updated `TODO.md` with clear next steps
+   - Planned SQLite → PostgreSQL → Docker migration path
 
-🎯 **Next Session Focus:**
-1. Write proper unit tests with mocks (in progress)
+### 📂 **Current Test Status:**
+```
+backend/tests/
+  ├─ middleware.test.ts  ✅ KEPT (uses test.db, refactor later)
+  ├─ setup.ts            ✅ KEPT (will update for unit tests)
+  └─ tsconfig.json       ✅ Config file
+
+Database Files:
+  ├─ dev.db    ✅ Development database (app uses this)
+  └─ test.db   ✅ Test database (middleware.test.ts uses this)
+```
+
+### 🎯 **Next Session - Start Here:**
+**Primary Goal:** Write proper unit tests with mocked dependencies
+
+**Step-by-step:**
+1. Create `tests/unit/controllers/` folder
+2. Write `auth.controller.test.ts`:
+   - Mock `@prisma/client`, `bcryptjs`, `jsonwebtoken`
+   - Test `register()` and `login()` functions directly
+   - No HTTP requests, no database
+3. Write `todos.controller.test.ts`:
+   - Mock `@prisma/client`
+   - Test CRUD controller functions
+   - Test authorization logic
+
+**Tools needed:** Only Jest (supertest NOT needed for unit tests)
+
+### 🚀 **Future Sessions:**
 2. Implement HTTPS for learning
 3. Add password reset feature
-4. Later: Migrate to PostgreSQL + Docker
+4. Migrate to PostgreSQL + Docker
 
-**Key Principles:**
-- Keep test types separate (unit vs E2E)
-- Prototype fast with SQLite, migrate to PostgreSQL before Docker
-- Learn incrementally!
+### 🧠 **Key Decisions Made:**
+- ✅ SQLite → PostgreSQL → Docker (phased approach)
+- ✅ Unit tests (Jest) + E2E tests (Cypress later)
+- ✅ No integration tests (replaced by unit + E2E)
+- ✅ Keep supertest for now (middleware.test.ts needs it)
