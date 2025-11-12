@@ -166,33 +166,99 @@ resetTokenExpires: DateTime?
    - Updated `TODO.md` with clear next steps
    - Planned SQLite → PostgreSQL → Docker migration path
 
+### ✅ **Completed This Session (2025-11-12) - Unit Testing Implementation:**
+1. **Unit tests fully implemented** - 49 tests passing in ~15 seconds
+2. **Test coverage achieved:**
+   - `auth.controller.test.ts` - 26 tests (register & login)
+   - `todos.controller.test.ts` - 23 tests (CRUD operations)
+   - 100% statement coverage, 95.83% branch coverage
+3. **Learned unit testing fundamentals:**
+   - Understood mocking strategy (Prisma, bcrypt, JWT)
+   - AAA pattern (Arrange-Act-Assert)
+   - Test organization with describe blocks
+   - Mock utilities in setup.ts
+
 ### 📂 **Current Test Status:**
 ```
 backend/tests/
-  ├─ middleware.test.ts  ✅ KEPT (uses test.db, refactor later)
-  ├─ setup.ts            ✅ KEPT (will update for unit tests)
-  └─ tsconfig.json       ✅ Config file
+  ├─ unit/
+  │   ├─ setup.ts                              ✅ Mock factories & utilities
+  │   └─ controllers/
+  │       ├─ auth.controller.test.ts           ✅ 26 tests passing
+  │       └─ todos.controller.test.ts          ✅ 23 tests passing
+  ├─ tsconfig.json                             ✅ Test config
+  └─ README.md                                 ✅ Testing documentation
 
-Database Files:
-  ├─ dev.db    ✅ Development database (app uses this)
-  └─ test.db   ✅ Test database (middleware.test.ts uses this)
+Test Results: 49 tests passing | ~15 seconds | 100% statement coverage
 ```
 
-### 🎯 **Next Session - Start Here:**
-**Primary Goal:** Write proper unit tests with mocked dependencies
+---
 
-**Step-by-step:**
-1. Create `tests/unit/controllers/` folder
-2. Write `auth.controller.test.ts`:
-   - Mock `@prisma/client`, `bcryptjs`, `jsonwebtoken`
-   - Test `register()` and `login()` functions directly
-   - No HTTP requests, no database
-3. Write `todos.controller.test.ts`:
-   - Mock `@prisma/client`
-   - Test CRUD controller functions
-   - Test authorization logic
+## 🎓 **CURRENT LEARNING TRACK: Unit Testing Deep Dive**
 
-**Tools needed:** Only Jest (supertest NOT needed for unit tests)
+### **Status:** Learning unit testing methodology step-by-step
+
+**Learning Approach:**
+I prefer an **incremental, hands-on approach** where I:
+1. Start writing the test file immediately (`auth.controller.test.ts`)
+2. Build utilities (in `setup.ts`) as I need them (just-in-time)
+3. Learn by doing, not by pre-planning everything
+4. Ask questions on specific lines of code as I encounter them
+
+**Current Progress:**
+- ✅ Understood the practical starting point (test file first, not setup)
+- ✅ Learned about scoped NPM packages (`@prisma/client`)
+- 🔄 **STOPPED AT:** Understanding `mockPrismaUser.findUnique.mockResolvedValue(null);`
+
+### 🎯 **Next Session - Continue Here:**
+
+**Prompt for Claude:**
+```
+I'm learning unit testing in my full-stack Todo app. Last session we were going
+through the first test step-by-step:
+
+Test: "should register new user and return user data with token"
+Location: backend/tests/unit/controllers/auth.controller.test.ts
+
+I stopped at this line:
+    mockPrismaUser.findUnique.mockResolvedValue(null);
+
+Please continue teaching me line-by-line:
+1. Explain what `mockResolvedValue(null)` does
+2. Why we pass `null` specifically
+3. How this connects to the controller code
+4. Continue through the rest of this test incrementally
+
+My learning style:
+- Small, granular steps (one concept at a time)
+- Connect test code to actual controller implementation
+- Ask me if I have questions before moving to the next line
+- Act as a senior developer mentor who teaches by doing
+
+Files to reference:
+- Test: backend/tests/unit/controllers/auth.controller.test.ts (lines 64-127)
+- Controller: backend/src/controllers/auth.controller.ts (register function)
+- Setup: backend/tests/unit/setup.ts
+```
+
+### 📚 **Learning Concepts Covered:**
+- ✅ Unit test fundamentals (mocking, isolation, speed)
+- ✅ AAA pattern (Arrange-Act-Assert)
+- ✅ Test structure (describe blocks, it blocks)
+- ✅ Incremental test development workflow
+- ✅ Mock utilities and factories
+- ✅ Jest mocking basics (`jest.mock()`)
+- ✅ NPM scoped packages (`@prisma/client`)
+- 🔄 Mock function methods (`.mockResolvedValue()`, `.mockReturnValue()`)
+- 🔄 Understanding test assertions (`expect()`)
+- 🔄 Testing patterns (validation, authorization, error handling)
+
+### 🎯 **Next Learning Goals:**
+1. Complete understanding of the first test case
+2. Learn mock function methods in detail
+3. Understand how mocks interact with controller code
+4. Practice writing a second test case independently
+5. Learn testing patterns (error cases, edge cases)
 
 ### 🚀 **Future Sessions:**
 2. Implement HTTPS for learning

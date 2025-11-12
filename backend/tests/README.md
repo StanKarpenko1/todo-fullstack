@@ -189,15 +189,6 @@ describe('myController()', () => {
    - [ ] Utility functions (if any)
    - [ ] Validation schemas
 
-2. **Add Integration Tests** (Future)
-   - Test real database operations
-   - Test middleware chains with Supertest
-   - Test API contract compliance
-
-3. **Add E2E Tests** (Cypress)
-   - Test critical user flows
-   - Test frontend + backend together
-   - Test authentication flows
 
 ## Benefits of This Approach
 
