@@ -9,7 +9,7 @@
  * - Follows AAA pattern: Arrange, Act, Assert
  */
 
-import { Response } from 'express';
+import { Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { AuthenticatedRequest } from '../../../src/middleware/auth';
 import {
@@ -22,6 +22,7 @@ import {
   createMockAuthRequest,
   createMockResponse,
   createMockTodo,
+  createMockNext,
   suppressConsoleError,
 } from '../setup';
 
@@ -48,11 +49,13 @@ const { mockPrismaTodo } = require('@prisma/client') as any;
 
 describe('Todos Controller - Unit Tests', () => {
   let req: AuthenticatedRequest;
+  let next: NextFunction;
   let res: Response;
 
   beforeEach(() => {
     req = createMockAuthRequest();
     res = createMockResponse();
+    next = createMockNext();
 
     jest.clearAllMocks();
   });
@@ -69,7 +72,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.findMany.mockResolvedValue(mockTodos);
 
         // ACT
-        await getTodos(req, res);
+        await getTodos(req, res, next);
 
         // ASSERT
         expect(mockPrismaTodo.findMany).toHaveBeenCalledWith({
@@ -87,7 +90,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.findMany.mockResolvedValue([]);
 
         // ACT
-        await getTodos(req, res);
+        await getTodos(req, res, next);
 
         // ASSERT
         expect(mockPrismaTodo.findMany).toHaveBeenCalledWith({
@@ -108,7 +111,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.findMany.mockResolvedValue([]);
 
         // ACT
-        await getTodos(req, res);
+        await getTodos(req, res, next);
 
         // ASSERT
         expect(mockPrismaTodo.findMany).toHaveBeenCalledWith(
@@ -123,7 +126,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.findMany.mockResolvedValue([]);
 
         // ACT
-        await getTodos(req, res);
+        await getTodos(req, res, next);
 
         // ASSERT
         expect(mockPrismaTodo.findMany).toHaveBeenCalledWith(
@@ -144,7 +147,7 @@ describe('Todos Controller - Unit Tests', () => {
         const consoleSpy = suppressConsoleError();
 
         // ACT
-        await getTodos(req, res);
+        await getTodos(req, res, next);
 
         // ASSERT
         expect(res.status).toHaveBeenCalledWith(500);
@@ -176,7 +179,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.create.mockResolvedValue(mockCreatedTodo);
 
         // ACT
-        await createTodo(req, res);
+        await createTodo(req, res, next);
 
         // ASSERT
         expect(mockPrismaTodo.create).toHaveBeenCalledWith({
@@ -205,7 +208,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.create.mockResolvedValue(mockCreatedTodo);
 
         // ACT
-        await createTodo(req, res);
+        await createTodo(req, res, next);
 
         // ASSERT
         expect(mockPrismaTodo.create).toHaveBeenCalledWith({
@@ -227,7 +230,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.create.mockResolvedValue(createMockTodo());
 
         // ACT
-        await createTodo(req, res);
+        await createTodo(req, res, next);
 
         // ASSERT
         expect(mockPrismaTodo.create).toHaveBeenCalledWith(
@@ -245,7 +248,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.create.mockResolvedValue(createMockTodo());
 
         // ACT
-        await createTodo(req, res);
+        await createTodo(req, res, next);
 
         // ASSERT - Joi validation handles trimming before controller
         expect(res.status).toHaveBeenCalledWith(201);
@@ -258,7 +261,7 @@ describe('Todos Controller - Unit Tests', () => {
         req.body = { description: 'Description without title' };
 
         // ACT
-        await createTodo(req, res);
+        await createTodo(req, res, next);
 
         // ASSERT
         expect(res.status).toHaveBeenCalledWith(400);
@@ -273,7 +276,7 @@ describe('Todos Controller - Unit Tests', () => {
         req.body = { title: '' };
 
         // ACT
-        await createTodo(req, res);
+        await createTodo(req, res, next);
 
         // ASSERT
         expect(res.status).toHaveBeenCalledWith(400);
@@ -285,7 +288,7 @@ describe('Todos Controller - Unit Tests', () => {
         req.body = { title: '   ' };
 
         // ACT
-        await createTodo(req, res);
+        await createTodo(req, res, next);
 
         // ASSERT
         expect(res.status).toHaveBeenCalledWith(400);
@@ -302,7 +305,7 @@ describe('Todos Controller - Unit Tests', () => {
         const consoleSpy = suppressConsoleError();
 
         // ACT
-        await createTodo(req, res);
+        await createTodo(req, res, next);
 
         // ASSERT
         expect(res.status).toHaveBeenCalledWith(500);
@@ -330,7 +333,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.update.mockResolvedValue(updatedTodo);
 
         // ACT
-        await updateTodo(req, res);
+        await updateTodo(req, res, next);
 
         // ASSERT
         expect(mockPrismaTodo.findFirst).toHaveBeenCalledWith({
@@ -364,7 +367,7 @@ describe('Todos Controller - Unit Tests', () => {
         );
 
         // ACT
-        await updateTodo(req, res);
+        await updateTodo(req, res, next);
 
         // ASSERT
         expect(mockPrismaTodo.update).toHaveBeenCalledWith({
@@ -388,7 +391,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.update.mockResolvedValue(createMockTodo());
 
         // ACT
-        await updateTodo(req, res);
+        await updateTodo(req, res, next);
 
         // ASSERT
         expect(mockPrismaTodo.update).toHaveBeenCalledWith({
@@ -410,7 +413,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.update.mockResolvedValue(createMockTodo());
 
         // ACT
-        await updateTodo(req, res);
+        await updateTodo(req, res, next);
 
         // ASSERT
         expect(mockPrismaTodo.update).toHaveBeenCalledWith(
@@ -433,7 +436,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.findFirst.mockResolvedValue(null);
 
         // ACT
-        await updateTodo(req, res);
+        await updateTodo(req, res, next);
 
         // ASSERT
         expect(mockPrismaTodo.findFirst).toHaveBeenCalled();
@@ -454,7 +457,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.findFirst.mockResolvedValue(null);
 
         // ACT
-        await updateTodo(req, res);
+        await updateTodo(req, res, next);
 
         // ASSERT
         expect(mockPrismaTodo.findFirst).toHaveBeenCalledWith({
@@ -479,7 +482,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.update.mockResolvedValue(createMockTodo());
 
         // ACT
-        await updateTodo(req, res);
+        await updateTodo(req, res, next);
 
         // ASSERT - Ownership check happens in findFirst
         expect(mockPrismaTodo.findFirst).toHaveBeenCalledWith({
@@ -498,7 +501,7 @@ describe('Todos Controller - Unit Tests', () => {
         req.body = { title: '' };
 
         // ACT
-        await updateTodo(req, res);
+        await updateTodo(req, res, next);
 
         // ASSERT
         expect(res.status).toHaveBeenCalledWith(400);
@@ -511,7 +514,7 @@ describe('Todos Controller - Unit Tests', () => {
         req.body = { completed: 'yes' }; // Invalid type
 
         // ACT
-        await updateTodo(req, res);
+        await updateTodo(req, res, next);
 
         // ASSERT
         expect(res.status).toHaveBeenCalledWith(400);
@@ -532,7 +535,7 @@ describe('Todos Controller - Unit Tests', () => {
         const consoleSpy = suppressConsoleError();
 
         // ACT
-        await updateTodo(req, res);
+        await updateTodo(req, res, next);
 
         // ASSERT
         expect(res.status).toHaveBeenCalledWith(500);
@@ -557,7 +560,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.delete.mockResolvedValue(existingTodo);
 
         // ACT
-        await deleteTodo(req, res);
+        await deleteTodo(req, res, next);
 
         // ASSERT
         expect(mockPrismaTodo.findFirst).toHaveBeenCalledWith({
@@ -585,7 +588,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.delete.mockResolvedValue(createMockTodo());
 
         // ACT
-        await deleteTodo(req, res);
+        await deleteTodo(req, res, next);
 
         // ASSERT
         expect(mockPrismaTodo.findFirst).toHaveBeenCalledWith({
@@ -605,7 +608,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.findFirst.mockResolvedValue(null);
 
         // ACT
-        await deleteTodo(req, res);
+        await deleteTodo(req, res, next);
 
         // ASSERT
         expect(mockPrismaTodo.findFirst).toHaveBeenCalled();
@@ -625,7 +628,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.findFirst.mockResolvedValue(null);
 
         // ACT
-        await deleteTodo(req, res);
+        await deleteTodo(req, res, next);
 
         // ASSERT
         expect(mockPrismaTodo.findFirst).toHaveBeenCalledWith({
@@ -644,7 +647,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.findFirst.mockResolvedValue(null);
 
         // ACT
-        await deleteTodo(req, res);
+        await deleteTodo(req, res, next);
 
         // ASSERT - Must check ownership BEFORE deleting
         expect(mockPrismaTodo.findFirst).toHaveBeenCalled();
@@ -664,7 +667,7 @@ describe('Todos Controller - Unit Tests', () => {
         const consoleSpy = suppressConsoleError();
 
         // ACT
-        await deleteTodo(req, res);
+        await deleteTodo(req, res, next);
 
         // ASSERT
         expect(res.status).toHaveBeenCalledWith(500);
@@ -685,7 +688,7 @@ describe('Todos Controller - Unit Tests', () => {
         const consoleSpy = suppressConsoleError();
 
         // ACT
-        await deleteTodo(req, res);
+        await deleteTodo(req, res, next);
 
         // ASSERT
         expect(res.status).toHaveBeenCalledWith(500);

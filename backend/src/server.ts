@@ -10,6 +10,7 @@ import todoRoutes from './routers/todos';
 
 // Import security middleware
 import { sanitizeInput, limitRequestSize } from './middleware/security';
+import { errorHandler } from './middleware/errorHandler';
 
 // Load environment variables
 dotenv.config();
@@ -76,13 +77,16 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/todos', todoRoutes);
 
+// Error handler middleware (MUST be last)
+app.use(errorHandler);
+
 export { app };
 
 // Start server only when running directly (not during testing)
 if (require.main === module) {
   app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📊 Health check: http://localhost:${PORT}/health`);
-    console.log(`🔐 Auth endpoints: http://localhost:${PORT}/api/auth/register & /api/auth/login`);
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Health check: http://localhost:${PORT}/health`);
+    console.log(`Auth endpoints: http://localhost:${PORT}/api/auth/register & /api/auth/login`);
   });
 }

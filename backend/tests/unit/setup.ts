@@ -7,7 +7,7 @@
  * - Shared test utilities for TDD
  */
 
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../../src/middleware/auth';
 
 /**
@@ -20,6 +20,13 @@ export const createMockResponse = (): Response => {
   res.json = jest.fn().mockReturnValue(res);
   res.send = jest.fn().mockReturnValue(res);
   return res;
+};
+
+/**
+ * Mock Express NextFunction for error handling
+ */
+export const createMockNext = (): NextFunction => {
+  return jest.fn() as NextFunction;
 };
 
 /**
