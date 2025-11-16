@@ -94,33 +94,27 @@ export const updateTodo = asyncHandler(async (req: AuthenticatedRequest, res: Re
 });
 
 // Delete todo
-export const deleteTodo = async (req: AuthenticatedRequest, res: Response) => {
-    try {
-        const { id } = req.params;
+export const deleteTodo = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const { id } = req.params;
 
-        // Check if todo exists and belongs to user
-        const existingTodo = await prisma.todo.findFirst({
-            where: {
-                id,
-                userId: req.user!.id
-            }
-        });
-
-        if (!existingTodo) {
-            return res.status(404).json({ error: 'Todo not found' });
+    // Check if todo exists and belongs to user
+    const existingTodo = await prisma.todo.findFirst({
+        where: {
+            id,
+            userId: req.user!.id
         }
+    });
 
-        // Delete todo
-        await prisma.todo.delete({
-            where: { id }
-        });
-
-        res.json({
-            message: 'Todo deleted successfully'
-        });
-
-    } catch (error) {
-        console.error('Delete todo error:', error);
-        res.status(500).json({ error: 'Internal server error' });
+    if (!existingTodo) {
+        throw new AppError(404, 'Todo not found');
     }
-};
+
+    // Delete todo
+    await prisma.todo.delete({
+        where: { id }
+    });
+
+    res.json({
+        message: 'Todo deleted successfully'
+    });
+});
