@@ -2,7 +2,6 @@ import { Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import Joi from 'joi';
 import { AuthenticatedRequest } from '../middleware/auth';
-import { asyncHandler } from '../utils/asyncHandler';
 import { AppError } from '../middleware/errorHandler';
 
 const prisma = new PrismaClient();
@@ -20,7 +19,7 @@ const updateTodoSchema = Joi.object({
 });
 
 // Get all todos for authenticated user
-export const getTodos = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+export const getTodos = async (req: AuthenticatedRequest, res: Response) => {
     const todos = await prisma.todo.findMany({
         where: { userId: req.user!.id },
         orderBy: { createdAt: 'desc' }
@@ -30,10 +29,10 @@ export const getTodos = asyncHandler(async (req: AuthenticatedRequest, res: Resp
         message: 'Todos retrieved successfully',
         todos
     });
-});
+};
 
 // Create new todo
-export const createTodo = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+export const createTodo = async (req: AuthenticatedRequest, res: Response) => {
     const { error, value } = createTodoSchema.validate(req.body);
 
     if (error) {
@@ -54,10 +53,10 @@ export const createTodo = asyncHandler(async (req: AuthenticatedRequest, res: Re
         message: 'Todo created successfully',
         todo
     });
-});
+};
 
 // Update existing todo
-export const updateTodo = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+export const updateTodo = async (req: AuthenticatedRequest, res: Response) => {
     // Validate request body
     const { error, value } = updateTodoSchema.validate(req.body);
     if (error) {
@@ -91,10 +90,10 @@ export const updateTodo = asyncHandler(async (req: AuthenticatedRequest, res: Re
         message: 'Todo updated successfully',
         todo: updatedTodo
     });
-});
+};
 
 // Delete todo
-export const deleteTodo = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+export const deleteTodo = async (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
 
     // Check if todo exists and belongs to user
@@ -117,4 +116,4 @@ export const deleteTodo = asyncHandler(async (req: AuthenticatedRequest, res: Re
     res.json({
         message: 'Todo deleted successfully'
     });
-});
+};

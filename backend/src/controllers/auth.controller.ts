@@ -3,7 +3,6 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import Joi from 'joi';
-import { asyncHandler } from '../utils/asyncHandler';
 import { AppError } from '../middleware/errorHandler';
 
 const prisma = new PrismaClient();
@@ -30,7 +29,7 @@ const generateToken = (userId: string): string => {
 };
 
 // Register controller
-export const register = asyncHandler(async (req: Request, res: Response) => {
+export const register = async (req: Request, res: Response) => {
     // Validate request body
     const { error, value } = registerSchema.validate(req.body);
 
@@ -76,10 +75,10 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
         user,
         token
     });
-});
+};
 
 // Login controller
-export const login = asyncHandler(async (req: Request, res: Response) => {
+export const login = async (req: Request, res: Response) => {
     // Validate request body
     const { error, value } = loginSchema.validate(req.body);
 
@@ -116,4 +115,4 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
         },
         token
     });
-});
+};

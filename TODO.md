@@ -2,8 +2,8 @@
 
 ## High Priority Tasks
 
-### 1. 🧪 Write Proper Unit Tests (IN PROGRESS)
-**Status:** Old integration tests deleted, ready to write unit tests
+### 1. 🧪 Write Proper Unit Tests ✅ COMPLETED
+**Status:** 49 tests passing, 100% statement coverage, Express 5 architecture
 
 **What to do:**
 - **Mock all external dependencies** (Prisma, bcrypt, jwt)
@@ -178,6 +178,23 @@ resetTokenExpires: DateTime?
    - Test organization with describe blocks
    - Mock utilities in setup.ts
 
+### ✅ **Completed This Session (2025-11-17) - Express 5 Refactor & Test Fixes:**
+1. **Discovered unnecessary asyncHandler wrapper** - Already on Express 5.1.0!
+2. **Removed asyncHandler pattern:**
+   - Deleted `src/utils/asyncHandler.ts` (redundant with Express 5)
+   - Removed wrapper from `auth.controller.ts` (2 functions)
+   - Removed wrapper from `todos.controller.ts` (4 functions)
+3. **Updated all tests to modern error testing pattern:**
+   - Changed 30 tests from testing `res.status()` calls to `expect().rejects.toThrow()`
+   - Removed unused `suppressConsoleError` and `NextFunction` imports
+   - Tests now validate **thrown errors** instead of response formatting
+4. **Learned key concepts:**
+   - Express 5 automatically catches async errors (no wrapper needed!)
+   - Modern error testing: Test that controllers throw correct errors
+   - Separation of concerns: Controllers throw, error handler formats
+   - Reference project comparison (why they don't use asyncHandler)
+5. **All 49 tests passing** - Clean refactor, no functionality broken
+
 ### 📂 **Current Test Status:**
 ```
 backend/tests/
@@ -189,76 +206,63 @@ backend/tests/
   ├─ tsconfig.json                             ✅ Test config
   └─ README.md                                 ✅ Testing documentation
 
-Test Results: 49 tests passing | ~15 seconds | 100% statement coverage
+Test Results: 49 tests passing | ~7 seconds | 100% statement coverage
+Architecture: Express 5 native async error handling (no asyncHandler needed)
 ```
 
 ---
 
-## 🎓 **CURRENT LEARNING TRACK: Unit Testing Deep Dive**
+## 🎓 **CURRENT LEARNING TRACK: Unit Testing (COMPLETED!)**
 
-### **Status:** Learning unit testing methodology step-by-step
+### **Status:** ✅ Unit tests complete - Ready for next task
 
-**Learning Approach:**
-I prefer an **incremental, hands-on approach** where I:
-1. Start writing the test file immediately (`auth.controller.test.ts`)
-2. Build utilities (in `setup.ts`) as I need them (just-in-time)
-3. Learn by doing, not by pre-planning everything
-4. Ask questions on specific lines of code as I encounter them
+**What We Learned:**
+1. ✅ Unit test fundamentals (mocking, isolation, speed)
+2. ✅ AAA pattern (Arrange-Act-Assert)
+3. ✅ Test structure (describe blocks, it blocks)
+4. ✅ Incremental test development workflow
+5. ✅ Mock utilities and factories
+6. ✅ Jest mocking basics (`jest.mock()`)
+7. ✅ NPM scoped packages (`@prisma/client`)
+8. ✅ Mock function methods (`.mockResolvedValue()`, `.mockReturnValue()`)
+9. ✅ Understanding test assertions (`expect()`)
+10. ✅ Testing patterns (validation, authorization, error handling)
+11. ✅ Express 5 vs 4 async error handling
+12. ✅ Modern error testing with `expect().rejects.toThrow()`
+13. ✅ Separation of concerns (controllers vs error handlers)
 
-**Current Progress:**
-- ✅ Understood the practical starting point (test file first, not setup)
-- ✅ Learned about scoped NPM packages (`@prisma/client`)
-- 🔄 **STOPPED AT:** Understanding `mockPrismaUser.findUnique.mockResolvedValue(null);`
+### 🎯 **Next Session - Pick Up Here:**
 
-### 🎯 **Next Session - Continue Here:**
+**Options for next session:**
 
-**Prompt for Claude:**
+**Option A: Continue Learning Path (Recommended)**
 ```
-I'm learning unit testing in my full-stack Todo app. Last session we were going
-through the first test step-by-step:
+Let's implement HTTPS for the backend! (Task #2 in TODO.md)
 
-Test: "should register new user and return user data with token"
-Location: backend/tests/unit/controllers/auth.controller.test.ts
+Goals:
+- Generate development certificates with mkcert
+- Configure Express to use HTTPS
+- Update Helmet configuration for HSTS
+- Test secure connections locally
 
-I stopped at this line:
-    mockPrismaUser.findUnique.mockResolvedValue(null);
-
-Please continue teaching me line-by-line:
-1. Explain what `mockResolvedValue(null)` does
-2. Why we pass `null` specifically
-3. How this connects to the controller code
-4. Continue through the rest of this test incrementally
-
-My learning style:
-- Small, granular steps (one concept at a time)
-- Connect test code to actual controller implementation
-- Ask me if I have questions before moving to the next line
-- Act as a senior developer mentor who teaches by doing
-
-Files to reference:
-- Test: backend/tests/unit/controllers/auth.controller.test.ts (lines 64-127)
-- Controller: backend/src/controllers/auth.controller.ts (register function)
-- Setup: backend/tests/unit/setup.ts
+This will teach practical TLS/SSL concepts and security headers.
 ```
 
-### 📚 **Learning Concepts Covered:**
-- ✅ Unit test fundamentals (mocking, isolation, speed)
-- ✅ AAA pattern (Arrange-Act-Assert)
-- ✅ Test structure (describe blocks, it blocks)
-- ✅ Incremental test development workflow
-- ✅ Mock utilities and factories
-- ✅ Jest mocking basics (`jest.mock()`)
-- ✅ NPM scoped packages (`@prisma/client`)
-- 🔄 Mock function methods (`.mockResolvedValue()`, `.mockReturnValue()`)
-- 🔄 Understanding test assertions (`expect()`)
-- 🔄 Testing patterns (validation, authorization, error handling)
+**Option B: Expand Testing**
+```
+Let's add more test coverage:
+- Unit tests for middleware (auth.ts, security.ts)
+- Unit tests for errorHandler middleware
+- Learn to test Express middleware in isolation
+```
 
-### 🎯 **Next Learning Goals:**
-1. Complete understanding of the first test case
-2. Learn mock function methods in detail
-3. Understand how mocks interact with controller code
-4. Practice writing a second test case independently
-5. Learn testing patterns (error cases, edge cases)
+**Option C: Add New Feature**
+```
+Implement password reset functionality (Task #3)
+- Practice adding new endpoints
+- Learn token-based flows
+- Apply unit testing to new code (TDD approach)
+```
 
 ### 🚀 **Future Sessions:**
 2. Implement HTTPS for learning

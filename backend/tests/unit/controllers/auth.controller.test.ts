@@ -19,7 +19,6 @@ import {
   createMockResponse,
   createMockUser,
   setupTestEnv,
-  suppressConsoleError,
 } from '../setup';
 
 // Mock all external dependencies
@@ -158,67 +157,43 @@ describe('Auth Controller - Unit Tests', () => {
     });
 
     describe('validation errors', () => {
-      it('should return 400 when email is missing', async () => {
+      it('should throw AppError when email is missing', async () => {
         // ARRANGE
         req.body = { password: 'password123' };
 
-        // ACT
-        await register(req, res);
-
-        // ASSERT
-        expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith({
-          error: expect.stringContaining('email'),
-        });
+        // ACT & ASSERT
+        await expect(register(req, res)).rejects.toThrow('"email" is required');
         expect(mockPrismaUser.findUnique).not.toHaveBeenCalled();
       });
 
-      it('should return 400 when email is invalid', async () => {
+      it('should throw AppError when email is invalid', async () => {
         // ARRANGE
         req.body = { email: 'not-an-email', password: 'password123' };
 
-        // ACT
-        await register(req, res);
-
-        // ASSERT
-        expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith({
-          error: expect.stringContaining('valid email'),
-        });
+        // ACT & ASSERT
+        await expect(register(req, res)).rejects.toThrow('valid email');
         expect(mockPrismaUser.findUnique).not.toHaveBeenCalled();
       });
 
-      it('should return 400 when password is missing', async () => {
+      it('should throw AppError when password is missing', async () => {
         // ARRANGE
         req.body = { email: 'user@example.com' };
 
-        // ACT
-        await register(req, res);
-
-        // ASSERT
-        expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith({
-          error: expect.stringContaining('password'),
-        });
+        // ACT & ASSERT
+        await expect(register(req, res)).rejects.toThrow('"password" is required');
       });
 
-      it('should return 400 when password is too short (< 6 characters)', async () => {
+      it('should throw AppError when password is too short (< 6 characters)', async () => {
         // ARRANGE
         req.body = { email: 'user@example.com', password: '12345' };
 
-        // ACT
-        await register(req, res);
-
-        // ASSERT
-        expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith({
-          error: expect.stringContaining('6'),
-        });
+        // ACT & ASSERT
+        await expect(register(req, res)).rejects.toThrow('at least 6 characters');
       });
     });
 
     describe('business logic errors', () => {
-      it('should return 400 when user already exists', async () => {
+      it('should throw AppError when user already exists', async () => {
         // ARRANGE
         req.body = {
           email: 'existing@example.com',
@@ -230,21 +205,15 @@ describe('Auth Controller - Unit Tests', () => {
           createMockUser({ email: 'existing@example.com' })
         );
 
-        // ACT
-        await register(req, res);
-
-        // ASSERT
+        // ACT & ASSERT
+        await expect(register(req, res)).rejects.toThrow('User already exists with this email');
         expect(mockPrismaUser.findUnique).toHaveBeenCalled();
         expect(mockPrismaUser.create).not.toHaveBeenCalled();
-        expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith({
-          error: 'User already exists with this email',
-        });
       });
     });
 
     describe('error handling', () => {
-      it('should return 500 when database throws error', async () => {
+      it('should throw error when database throws error', async () => {
         // ARRANGE
         req.body = {
           email: 'user@example.com',
@@ -256,22 +225,11 @@ describe('Auth Controller - Unit Tests', () => {
           new Error('Database connection failed')
         );
 
-        const consoleSpy = suppressConsoleError();
-
-        // ACT
-        await register(req, res);
-
-        // ASSERT
-        expect(res.status).toHaveBeenCalledWith(500);
-        expect(res.json).toHaveBeenCalledWith({
-          error: 'Internal server error',
-        });
-        expect(consoleSpy).toHaveBeenCalled();
-
-        consoleSpy.mockRestore();
+        // ACT & ASSERT
+        await expect(register(req, res)).rejects.toThrow('Database connection failed');
       });
 
-      it('should return 500 when bcrypt throws error', async () => {
+      it('should throw error when bcrypt throws error', async () => {
         // ARRANGE
         req.body = {
           email: 'user@example.com',
@@ -283,18 +241,8 @@ describe('Auth Controller - Unit Tests', () => {
           new Error('Hashing failed')
         );
 
-        const consoleSpy = suppressConsoleError();
-
-        // ACT
-        await register(req, res);
-
-        // ASSERT
-        expect(res.status).toHaveBeenCalledWith(500);
-        expect(res.json).toHaveBeenCalledWith({
-          error: 'Internal server error',
-        });
-
-        consoleSpy.mockRestore();
+        // ACT & ASSERT
+        await expect(register(req, res)).rejects.toThrow('Hashing failed');
       });
     });
   });
@@ -374,69 +322,48 @@ describe('Auth Controller - Unit Tests', () => {
     });
 
     describe('validation errors', () => {
-      it('should return 400 when email is missing', async () => {
+      it('should throw AppError when email is missing', async () => {
         // ARRANGE
         req.body = { password: 'password123' };
 
-        // ACT
-        await login(req, res);
-
-        // ASSERT
-        expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith({
-          error: expect.stringContaining('email'),
-        });
+        // ACT & ASSERT
+        await expect(login(req, res)).rejects.toThrow('"email" is required');
         expect(mockPrismaUser.findUnique).not.toHaveBeenCalled();
       });
 
-      it('should return 400 when password is missing', async () => {
+      it('should throw AppError when password is missing', async () => {
         // ARRANGE
         req.body = { email: 'user@example.com' };
 
-        // ACT
-        await login(req, res);
-
-        // ASSERT
-        expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith({
-          error: expect.stringContaining('password'),
-        });
+        // ACT & ASSERT
+        await expect(login(req, res)).rejects.toThrow('"password" is required');
       });
 
-      it('should return 400 when email is invalid format', async () => {
+      it('should throw AppError when email is invalid format', async () => {
         // ARRANGE
         req.body = { email: 'invalid-email', password: 'password123' };
 
-        // ACT
-        await login(req, res);
-
-        // ASSERT
-        expect(res.status).toHaveBeenCalledWith(400);
+        // ACT & ASSERT
+        await expect(login(req, res)).rejects.toThrow('valid email');
         expect(mockPrismaUser.findUnique).not.toHaveBeenCalled();
       });
     });
 
     describe('authentication failures', () => {
-      it('should return 400 when user does not exist', async () => {
+      it('should throw AppError when user does not exist', async () => {
         // ARRANGE
         req.body = { email: 'nonexistent@example.com', password: 'password123' };
 
         // Mock: User not found
         mockPrismaUser.findUnique.mockResolvedValue(null);
 
-        // ACT
-        await login(req, res);
-
-        // ASSERT
+        // ACT & ASSERT
+        await expect(login(req, res)).rejects.toThrow('Invalid email or password');
         expect(mockPrismaUser.findUnique).toHaveBeenCalled();
         expect(bcrypt.compare).not.toHaveBeenCalled();
-        expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith({
-          error: 'Invalid email or password',
-        });
       });
 
-      it('should return 400 when password is incorrect', async () => {
+      it('should throw AppError when password is incorrect', async () => {
         // ARRANGE
         req.body = { email: 'user@example.com', password: 'wrong-password' };
         const mockUser = createMockUser();
@@ -446,19 +373,13 @@ describe('Auth Controller - Unit Tests', () => {
         // Mock: Password comparison fails
         (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
-        // ACT
-        await login(req, res);
-
-        // ASSERT
+        // ACT & ASSERT
+        await expect(login(req, res)).rejects.toThrow('Invalid email or password');
         expect(bcrypt.compare).toHaveBeenCalledWith(
           'wrong-password',
           mockUser.password
         );
         expect(jwt.sign).not.toHaveBeenCalled();
-        expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith({
-          error: 'Invalid email or password',
-        });
       });
 
       it('should use same error message for non-existent user and wrong password (security)', async () => {
@@ -466,33 +387,27 @@ describe('Auth Controller - Unit Tests', () => {
         req.body = { email: 'fake@example.com', password: 'password' };
         mockPrismaUser.findUnique.mockResolvedValue(null);
 
-        // ACT
-        await login(req, res);
-
-        // ASSERT
-        const nonExistentError = (res.json as jest.Mock).mock.calls[0][0].error;
+        // ACT & ASSERT
+        await expect(login(req, res)).rejects.toThrow('Invalid email or password');
+        const firstErrorMessage = 'Invalid email or password';
 
         // Reset
         jest.clearAllMocks();
-        res = createMockResponse();
 
         // ARRANGE - Wrong password
         req.body = { email: 'user@example.com', password: 'wrong' };
         mockPrismaUser.findUnique.mockResolvedValue(createMockUser());
         (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
-        // ACT
-        await login(req, res);
-
-        // ASSERT
-        const wrongPasswordError = (res.json as jest.Mock).mock.calls[0][0]
-          .error;
-        expect(nonExistentError).toBe(wrongPasswordError);
+        // ACT & ASSERT
+        await expect(login(req, res)).rejects.toThrow('Invalid email or password');
+        const secondErrorMessage = 'Invalid email or password';
+        expect(firstErrorMessage).toBe(secondErrorMessage);
       });
     });
 
     describe('error handling', () => {
-      it('should return 500 when database throws error', async () => {
+      it('should throw error when database throws error', async () => {
         // ARRANGE
         req.body = { email: 'user@example.com', password: 'password123' };
 
@@ -500,21 +415,11 @@ describe('Auth Controller - Unit Tests', () => {
           new Error('Database error')
         );
 
-        const consoleSpy = suppressConsoleError();
-
-        // ACT
-        await login(req, res);
-
-        // ASSERT
-        expect(res.status).toHaveBeenCalledWith(500);
-        expect(res.json).toHaveBeenCalledWith({
-          error: 'Internal server error',
-        });
-
-        consoleSpy.mockRestore();
+        // ACT & ASSERT
+        await expect(login(req, res)).rejects.toThrow('Database error');
       });
 
-      it('should return 500 when bcrypt throws error', async () => {
+      it('should throw error when bcrypt throws error', async () => {
         // ARRANGE
         req.body = { email: 'user@example.com', password: 'password123' };
         const mockUser = createMockUser();
@@ -524,18 +429,8 @@ describe('Auth Controller - Unit Tests', () => {
           new Error('Bcrypt error')
         );
 
-        const consoleSpy = suppressConsoleError();
-
-        // ACT
-        await login(req, res);
-
-        // ASSERT
-        expect(res.status).toHaveBeenCalledWith(500);
-        expect(res.json).toHaveBeenCalledWith({
-          error: 'Internal server error',
-        });
-
-        consoleSpy.mockRestore();
+        // ACT & ASSERT
+        await expect(login(req, res)).rejects.toThrow('Bcrypt error');
       });
     });
   });

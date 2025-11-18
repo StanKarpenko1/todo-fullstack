@@ -4,6 +4,10 @@
 
 This project follows **TRUE unit testing principles** with complete dependency mocking. These tests are designed for Test-Driven Development (TDD) workflows where tests are written first, followed by implementation.
 
+**Architecture:** Express 5 with native async error handling (no `asyncHandler` wrapper needed!)
+
+**Latest Update (2025-11-17):** Refactored to use Express 5 native features, removed redundant `asyncHandler` wrapper, updated all tests to modern error testing pattern.
+
 ## Test Structure
 
 ```
@@ -292,27 +296,9 @@ it('should do X', async () => {
 
 ---
 
-### 🏗️ Error Handling Architecture (Recommended Refactor)
+### 🏗️ Error Handling Architecture (Express 5)
 
-**Current Pattern (Code Duplication):**
-```typescript
-// ❌ Every controller has try/catch
-export const register = async (req, res) => {
-    try {
-        // business logic
-    } catch (error) {
-        console.error('Registration error:', error);  // Duplicated
-        res.status(500).json({ error: 'Internal server error' });  // Duplicated
-    }
-};
-```
-
-**Problems:**
-- ❌ DRY violation (error handling repeated everywhere)
-- ❌ Must test error handling in EVERY controller test
-- ❌ Hard to change error strategy globally
-
-**Better Pattern (Centralized):**
+**Our Pattern (Express 5 Native Async Error Handling):**
 
 ```typescript
 // src/middleware/errorHandler.ts
@@ -330,14 +316,9 @@ export const errorHandler = (err, req, res, next) => {
     res.status(statusCode).json({ error: message });
 };
 
-// src/utils/asyncHandler.ts
-export const asyncHandler = (fn) => (req, res, next) => {
-    Promise.resolve(fn(req, res, next)).catch(next);
-};
-
 // src/controllers/auth.controller.ts
-export const register = asyncHandler(async (req, res) => {
-    // ✅ Clean controller - no try/catch needed
+export const register = async (req, res) => {
+    // ✅ Express 5 automatically catches async errors - no wrapper needed!
     const { error, value } = registerSchema.validate(req.body);
     if (error) throw new AppError(400, error.details[0].message);
 
@@ -346,32 +327,41 @@ export const register = asyncHandler(async (req, res) => {
 
     // ... business logic
     res.status(201).json({ user, token });
-});
+};
 ```
 
-**Testing Benefits:**
+**Key Point: Express 5 Native Async Handling**
+- ✅ **No `asyncHandler` wrapper needed** - Express 5 automatically catches async errors
+- ✅ **No try/catch blocks** - Thrown errors automatically route to error middleware
+- ✅ **Clean controller signatures** - Just `(req, res)`, not `(req, res, next)`
+- ✅ **Modern pattern** - Matches latest Express best practices
+
+**Testing Pattern:**
 ```typescript
-// Test error handler ONCE:
+// Test that controllers throw correct errors:
+it('should throw AppError when validation fails', async () => {
+    req.body = { invalid: 'data' };
+    await expect(register(req, res)).rejects.toThrow(AppError);
+    await expect(register(req, res)).rejects.toThrow('validation failed');
+});
+
+// Test error handler middleware separately (optional):
 // tests/middleware/errorHandler.test.ts
 it('should handle AppError with custom status', () => {
     const error = new AppError(400, 'Bad request');
     errorHandler(error, req, res, next);
     expect(res.status).toHaveBeenCalledWith(400);
 });
-
-// Controller tests become simpler:
-it('should throw AppError when validation fails', async () => {
-    req.body = { invalid: 'data' };
-    await expect(register(req, res, next)).rejects.toThrow(AppError);
-    await expect(register(req, res, next)).rejects.toThrow('validation failed');
-});
 ```
 
 **Benefits:**
 - ✅ Error handling tested ONCE (centrally)
-- ✅ Controllers focus on business logic
-- ✅ Consistent error responses
+- ✅ Controllers focus on business logic only
+- ✅ Consistent error responses across app
 - ✅ Easy to add logging, monitoring, etc.
+- ✅ No redundant wrapper code
+
+**Note:** If you're on Express 4, you need `asyncHandler` or `express-async-errors`. Express 5 has this built-in!
 
 ---
 

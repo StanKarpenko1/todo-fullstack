@@ -9,7 +9,7 @@
  * - Follows AAA pattern: Arrange, Act, Assert
  */
 
-import { Response, NextFunction } from 'express';
+import { Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { AuthenticatedRequest } from '../../../src/middleware/auth';
 import {
@@ -22,8 +22,6 @@ import {
   createMockAuthRequest,
   createMockResponse,
   createMockTodo,
-  createMockNext,
-  suppressConsoleError,
 } from '../setup';
 
 // Mock Prisma - must define mocks inside the factory function
@@ -49,13 +47,11 @@ const { mockPrismaTodo } = require('@prisma/client') as any;
 
 describe('Todos Controller - Unit Tests', () => {
   let req: AuthenticatedRequest;
-  let next: NextFunction;
   let res: Response;
 
   beforeEach(() => {
     req = createMockAuthRequest();
     res = createMockResponse();
-    next = createMockNext();
 
     jest.clearAllMocks();
   });
@@ -72,7 +68,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.findMany.mockResolvedValue(mockTodos);
 
         // ACT
-        await getTodos(req, res, next);
+        await getTodos(req, res);
 
         // ASSERT
         expect(mockPrismaTodo.findMany).toHaveBeenCalledWith({
@@ -90,7 +86,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.findMany.mockResolvedValue([]);
 
         // ACT
-        await getTodos(req, res, next);
+        await getTodos(req, res);
 
         // ASSERT
         expect(mockPrismaTodo.findMany).toHaveBeenCalledWith({
@@ -111,7 +107,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.findMany.mockResolvedValue([]);
 
         // ACT
-        await getTodos(req, res, next);
+        await getTodos(req, res);
 
         // ASSERT
         expect(mockPrismaTodo.findMany).toHaveBeenCalledWith(
@@ -126,7 +122,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.findMany.mockResolvedValue([]);
 
         // ACT
-        await getTodos(req, res, next);
+        await getTodos(req, res);
 
         // ASSERT
         expect(mockPrismaTodo.findMany).toHaveBeenCalledWith(
@@ -138,24 +134,14 @@ describe('Todos Controller - Unit Tests', () => {
     });
 
     describe('error handling', () => {
-      it('should return 500 when database throws error', async () => {
+      it('should throw error when database throws error', async () => {
         // ARRANGE
         mockPrismaTodo.findMany.mockRejectedValue(
           new Error('Database error')
         );
 
-        const consoleSpy = suppressConsoleError();
-
-        // ACT
-        await getTodos(req, res, next);
-
-        // ASSERT
-        expect(res.status).toHaveBeenCalledWith(500);
-        expect(res.json).toHaveBeenCalledWith({
-          error: 'Internal server error',
-        });
-
-        consoleSpy.mockRestore();
+        // ACT & ASSERT
+        await expect(getTodos(req, res)).rejects.toThrow('Database error');
       });
     });
   });
@@ -179,7 +165,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.create.mockResolvedValue(mockCreatedTodo);
 
         // ACT
-        await createTodo(req, res, next);
+        await createTodo(req, res);
 
         // ASSERT
         expect(mockPrismaTodo.create).toHaveBeenCalledWith({
@@ -208,7 +194,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.create.mockResolvedValue(mockCreatedTodo);
 
         // ACT
-        await createTodo(req, res, next);
+        await createTodo(req, res);
 
         // ASSERT
         expect(mockPrismaTodo.create).toHaveBeenCalledWith({
@@ -230,7 +216,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.create.mockResolvedValue(createMockTodo());
 
         // ACT
-        await createTodo(req, res, next);
+        await createTodo(req, res);
 
         // ASSERT
         expect(mockPrismaTodo.create).toHaveBeenCalledWith(
@@ -248,7 +234,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.create.mockResolvedValue(createMockTodo());
 
         // ACT
-        await createTodo(req, res, next);
+        await createTodo(req, res);
 
         // ASSERT - Joi validation handles trimming before controller
         expect(res.status).toHaveBeenCalledWith(201);
@@ -256,64 +242,42 @@ describe('Todos Controller - Unit Tests', () => {
     });
 
     describe('validation errors', () => {
-      it('should return 400 when title is missing', async () => {
+      it('should throw AppError when title is missing', async () => {
         // ARRANGE
         req.body = { description: 'Description without title' };
 
-        // ACT
-        await createTodo(req, res, next);
-
-        // ASSERT
-        expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith({
-          error: expect.stringContaining('title'),
-        });
+        // ACT & ASSERT
+        await expect(createTodo(req, res)).rejects.toThrow('"title" is required');
         expect(mockPrismaTodo.create).not.toHaveBeenCalled();
       });
 
-      it('should return 400 when title is empty string', async () => {
+      it('should throw AppError when title is empty string', async () => {
         // ARRANGE
         req.body = { title: '' };
 
-        // ACT
-        await createTodo(req, res, next);
-
-        // ASSERT
-        expect(res.status).toHaveBeenCalledWith(400);
+        // ACT & ASSERT
+        await expect(createTodo(req, res)).rejects.toThrow('not allowed to be empty');
         expect(mockPrismaTodo.create).not.toHaveBeenCalled();
       });
 
-      it('should return 400 when title is only whitespace', async () => {
+      it('should throw AppError when title is only whitespace', async () => {
         // ARRANGE
         req.body = { title: '   ' };
 
-        // ACT
-        await createTodo(req, res, next);
-
-        // ASSERT
-        expect(res.status).toHaveBeenCalledWith(400);
+        // ACT & ASSERT
+        await expect(createTodo(req, res)).rejects.toThrow('not allowed to be empty');
         expect(mockPrismaTodo.create).not.toHaveBeenCalled();
       });
     });
 
     describe('error handling', () => {
-      it('should return 500 when database throws error', async () => {
+      it('should throw error when database throws error', async () => {
         // ARRANGE
         req.body = { title: 'Test Todo' };
         mockPrismaTodo.create.mockRejectedValue(new Error('Database error'));
 
-        const consoleSpy = suppressConsoleError();
-
-        // ACT
-        await createTodo(req, res, next);
-
-        // ASSERT
-        expect(res.status).toHaveBeenCalledWith(500);
-        expect(res.json).toHaveBeenCalledWith({
-          error: 'Internal server error',
-        });
-
-        consoleSpy.mockRestore();
+        // ACT & ASSERT
+        await expect(createTodo(req, res)).rejects.toThrow('Database error');
       });
     });
   });
@@ -333,7 +297,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.update.mockResolvedValue(updatedTodo);
 
         // ACT
-        await updateTodo(req, res, next);
+        await updateTodo(req, res);
 
         // ASSERT
         expect(mockPrismaTodo.findFirst).toHaveBeenCalledWith({
@@ -367,7 +331,7 @@ describe('Todos Controller - Unit Tests', () => {
         );
 
         // ACT
-        await updateTodo(req, res, next);
+        await updateTodo(req, res);
 
         // ASSERT
         expect(mockPrismaTodo.update).toHaveBeenCalledWith({
@@ -391,7 +355,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.update.mockResolvedValue(createMockTodo());
 
         // ACT
-        await updateTodo(req, res, next);
+        await updateTodo(req, res);
 
         // ASSERT
         expect(mockPrismaTodo.update).toHaveBeenCalledWith({
@@ -413,7 +377,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.update.mockResolvedValue(createMockTodo());
 
         // ACT
-        await updateTodo(req, res, next);
+        await updateTodo(req, res);
 
         // ASSERT
         expect(mockPrismaTodo.update).toHaveBeenCalledWith(
@@ -427,7 +391,7 @@ describe('Todos Controller - Unit Tests', () => {
     });
 
     describe('authorization checks', () => {
-      it('should return 404 when todo does not exist', async () => {
+      it('should throw AppError when todo does not exist', async () => {
         // ARRANGE
         req.params = { id: 'nonexistent-todo' };
         req.body = { title: 'Updated Title' };
@@ -435,19 +399,13 @@ describe('Todos Controller - Unit Tests', () => {
         // Mock: Todo not found
         mockPrismaTodo.findFirst.mockResolvedValue(null);
 
-        // ACT
-        await updateTodo(req, res, next);
-
-        // ASSERT
+        // ACT & ASSERT
+        await expect(updateTodo(req, res)).rejects.toThrow('Todo not found');
         expect(mockPrismaTodo.findFirst).toHaveBeenCalled();
         expect(mockPrismaTodo.update).not.toHaveBeenCalled();
-        expect(res.status).toHaveBeenCalledWith(404);
-        expect(res.json).toHaveBeenCalledWith({
-          error: 'Todo not found',
-        });
       });
 
-      it('should return 404 when todo belongs to different user', async () => {
+      it('should throw AppError when todo belongs to different user', async () => {
         // ARRANGE
         req.params = { id: 'todo-123' };
         req.body = { title: 'Hacker Update' };
@@ -456,10 +414,8 @@ describe('Todos Controller - Unit Tests', () => {
         // Mock: Todo not found for this user (findFirst uses userId in WHERE)
         mockPrismaTodo.findFirst.mockResolvedValue(null);
 
-        // ACT
-        await updateTodo(req, res, next);
-
-        // ASSERT
+        // ACT & ASSERT
+        await expect(updateTodo(req, res)).rejects.toThrow('Todo not found');
         expect(mockPrismaTodo.findFirst).toHaveBeenCalledWith({
           where: {
             id: 'todo-123',
@@ -467,7 +423,6 @@ describe('Todos Controller - Unit Tests', () => {
           },
         });
         expect(mockPrismaTodo.update).not.toHaveBeenCalled();
-        expect(res.status).toHaveBeenCalledWith(404);
       });
 
       it('should verify ownership before updating', async () => {
@@ -482,7 +437,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.update.mockResolvedValue(createMockTodo());
 
         // ACT
-        await updateTodo(req, res, next);
+        await updateTodo(req, res);
 
         // ASSERT - Ownership check happens in findFirst
         expect(mockPrismaTodo.findFirst).toHaveBeenCalledWith({
@@ -495,35 +450,29 @@ describe('Todos Controller - Unit Tests', () => {
     });
 
     describe('validation errors', () => {
-      it('should return 400 when title is empty string', async () => {
+      it('should throw AppError when title is empty string', async () => {
         // ARRANGE
         req.params = { id: 'todo-123' };
         req.body = { title: '' };
 
-        // ACT
-        await updateTodo(req, res, next);
-
-        // ASSERT
-        expect(res.status).toHaveBeenCalledWith(400);
+        // ACT & ASSERT
+        await expect(updateTodo(req, res)).rejects.toThrow('not allowed to be empty');
         expect(mockPrismaTodo.findFirst).not.toHaveBeenCalled();
       });
 
-      it('should return 400 when completed is not boolean', async () => {
+      it('should throw AppError when completed is not boolean', async () => {
         // ARRANGE
         req.params = { id: 'todo-123' };
         req.body = { completed: 'yes' }; // Invalid type
 
-        // ACT
-        await updateTodo(req, res, next);
-
-        // ASSERT
-        expect(res.status).toHaveBeenCalledWith(400);
+        // ACT & ASSERT
+        await expect(updateTodo(req, res)).rejects.toThrow('must be a boolean');
         expect(mockPrismaTodo.findFirst).not.toHaveBeenCalled();
       });
     });
 
     describe('error handling', () => {
-      it('should return 500 when database throws error', async () => {
+      it('should throw error when database throws error', async () => {
         // ARRANGE
         req.params = { id: 'todo-123' };
         req.body = { title: 'Update' };
@@ -532,18 +481,8 @@ describe('Todos Controller - Unit Tests', () => {
           new Error('Database error')
         );
 
-        const consoleSpy = suppressConsoleError();
-
-        // ACT
-        await updateTodo(req, res, next);
-
-        // ASSERT
-        expect(res.status).toHaveBeenCalledWith(500);
-        expect(res.json).toHaveBeenCalledWith({
-          error: 'Internal server error',
-        });
-
-        consoleSpy.mockRestore();
+        // ACT & ASSERT
+        await expect(updateTodo(req, res)).rejects.toThrow('Database error');
       });
     });
   });
@@ -560,7 +499,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.delete.mockResolvedValue(existingTodo);
 
         // ACT
-        await deleteTodo(req, res, next);
+        await deleteTodo(req, res);
 
         // ASSERT
         expect(mockPrismaTodo.findFirst).toHaveBeenCalledWith({
@@ -588,7 +527,7 @@ describe('Todos Controller - Unit Tests', () => {
         mockPrismaTodo.delete.mockResolvedValue(createMockTodo());
 
         // ACT
-        await deleteTodo(req, res, next);
+        await deleteTodo(req, res);
 
         // ASSERT
         expect(mockPrismaTodo.findFirst).toHaveBeenCalledWith({
@@ -601,25 +540,19 @@ describe('Todos Controller - Unit Tests', () => {
     });
 
     describe('authorization checks', () => {
-      it('should return 404 when todo does not exist', async () => {
+      it('should throw AppError when todo does not exist', async () => {
         // ARRANGE
         req.params = { id: 'nonexistent-todo' };
 
         mockPrismaTodo.findFirst.mockResolvedValue(null);
 
-        // ACT
-        await deleteTodo(req, res, next);
-
-        // ASSERT
+        // ACT & ASSERT
+        await expect(deleteTodo(req, res)).rejects.toThrow('Todo not found');
         expect(mockPrismaTodo.findFirst).toHaveBeenCalled();
         expect(mockPrismaTodo.delete).not.toHaveBeenCalled();
-        expect(res.status).toHaveBeenCalledWith(404);
-        expect(res.json).toHaveBeenCalledWith({
-          error: 'Todo not found',
-        });
       });
 
-      it('should return 404 when trying to delete another users todo', async () => {
+      it('should throw AppError when trying to delete another users todo', async () => {
         // ARRANGE
         req.params = { id: 'todo-123' };
         req.user!.id = 'user-A';
@@ -627,10 +560,8 @@ describe('Todos Controller - Unit Tests', () => {
         // Mock: Todo doesn't exist for this user
         mockPrismaTodo.findFirst.mockResolvedValue(null);
 
-        // ACT
-        await deleteTodo(req, res, next);
-
-        // ASSERT
+        // ACT & ASSERT
+        await expect(deleteTodo(req, res)).rejects.toThrow('Todo not found');
         expect(mockPrismaTodo.findFirst).toHaveBeenCalledWith({
           where: {
             id: 'todo-123',
@@ -638,7 +569,6 @@ describe('Todos Controller - Unit Tests', () => {
           },
         });
         expect(mockPrismaTodo.delete).not.toHaveBeenCalled();
-        expect(res.status).toHaveBeenCalledWith(404);
       });
 
       it('should prevent deletion without ownership check', async () => {
@@ -646,17 +576,15 @@ describe('Todos Controller - Unit Tests', () => {
         req.params = { id: 'todo-123' };
         mockPrismaTodo.findFirst.mockResolvedValue(null);
 
-        // ACT
-        await deleteTodo(req, res, next);
-
-        // ASSERT - Must check ownership BEFORE deleting
+        // ACT & ASSERT
+        await expect(deleteTodo(req, res)).rejects.toThrow('Todo not found');
         expect(mockPrismaTodo.findFirst).toHaveBeenCalled();
         expect(mockPrismaTodo.delete).not.toHaveBeenCalled();
       });
     });
 
     describe('error handling', () => {
-      it('should return 500 when database throws error', async () => {
+      it('should throw error when database throws error', async () => {
         // ARRANGE
         req.params = { id: 'todo-123' };
 
@@ -664,36 +592,19 @@ describe('Todos Controller - Unit Tests', () => {
           new Error('Database error')
         );
 
-        const consoleSpy = suppressConsoleError();
-
-        // ACT
-        await deleteTodo(req, res, next);
-
-        // ASSERT
-        expect(res.status).toHaveBeenCalledWith(500);
-        expect(res.json).toHaveBeenCalledWith({
-          error: 'Internal server error',
-        });
-
-        consoleSpy.mockRestore();
+        // ACT & ASSERT
+        await expect(deleteTodo(req, res)).rejects.toThrow('Database error');
       });
 
-      it('should return 500 when delete operation fails', async () => {
+      it('should throw error when delete operation fails', async () => {
         // ARRANGE
         req.params = { id: 'todo-123' };
 
         mockPrismaTodo.findFirst.mockResolvedValue(createMockTodo());
         mockPrismaTodo.delete.mockRejectedValue(new Error('Delete failed'));
 
-        const consoleSpy = suppressConsoleError();
-
-        // ACT
-        await deleteTodo(req, res, next);
-
-        // ASSERT
-        expect(res.status).toHaveBeenCalledWith(500);
-
-        consoleSpy.mockRestore();
+        // ACT & ASSERT
+        await expect(deleteTodo(req, res)).rejects.toThrow('Delete failed');
       });
     });
   });
