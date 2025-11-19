@@ -195,19 +195,46 @@ resetTokenExpires: DateTime?
    - Reference project comparison (why they don't use asyncHandler)
 5. **All 49 tests passing** - Clean refactor, no functionality broken
 
+### ✅ **Completed This Session (2025-11-19) - ErrorHandler Middleware Unit Tests:**
+1. **Created comprehensive errorHandler middleware tests** - 19 new tests, 100% coverage
+2. **Advanced mocking patterns mastered:**
+   - Console spying (jest.spyOn with mockRestore)
+   - Environment variable mocking (process.env.NODE_ENV)
+   - Partial object matching (expect.objectContaining)
+   - Parametric testing (forEach with jest.clearAllMocks)
+   - Type-safe matchers (expect.any(String))
+3. **Test categories implemented:**
+   - AppError handling (3 tests)
+   - Generic Error handling (3 tests)
+   - Environment-based behavior (3 tests)
+   - Logging behavior (3 tests)
+   - Prototype chain (2 tests)
+   - Response format consistency (3 tests)
+   - Edge cases (2 tests)
+4. **Key learning outcomes:**
+   - Test doubles deep dive (spies, mocks, stubs, fakes)
+   - Isolation patterns (test, module, environment, side-effect)
+   - Testing middleware in isolation
+   - AAA pattern reinforcement
+   - Understanding when to test errorHandler separately vs in controllers
+5. **All 68 tests passing** (~8 seconds) - Complete unit test coverage for controllers + middleware
+
 ### 📂 **Current Test Status:**
 ```
 backend/tests/
   ├─ unit/
   │   ├─ setup.ts                              ✅ Mock factories & utilities
-  │   └─ controllers/
-  │       ├─ auth.controller.test.ts           ✅ 26 tests passing
-  │       └─ todos.controller.test.ts          ✅ 23 tests passing
+  │   ├─ controllers/
+  │   │   ├─ auth.controller.test.ts           ✅ 26 tests passing
+  │   │   └─ todos.controller.test.ts          ✅ 23 tests passing
+  │   └─ middleware/
+  │       └─ errorHandler.test.ts              ✅ 19 tests passing
   ├─ tsconfig.json                             ✅ Test config
-  └─ README.md                                 ✅ Testing documentation
+  └─ README.md                                 ✅ Testing documentation (updated with advanced patterns)
 
-Test Results: 49 tests passing | ~7 seconds | 100% statement coverage
+Test Results: 68 tests passing | ~8 seconds | 100% statement coverage
 Architecture: Express 5 native async error handling (no asyncHandler needed)
+Coverage: Controllers 100% | ErrorHandler Middleware 100%
 ```
 
 ---
@@ -230,44 +257,113 @@ Architecture: Express 5 native async error handling (no asyncHandler needed)
 11. ✅ Express 5 vs 4 async error handling
 12. ✅ Modern error testing with `expect().rejects.toThrow()`
 13. ✅ Separation of concerns (controllers vs error handlers)
+14. ✅ **Advanced mocking patterns** (console spying, environment mocking)
+15. ✅ **Test doubles** (spies, mocks, stubs, fakes - when to use each)
+16. ✅ **Isolation patterns** (test, module, environment, side-effect isolation)
+17. ✅ **Parametric testing** (testing multiple scenarios efficiently)
+18. ✅ **Partial object matching** (`expect.objectContaining()`)
+19. ✅ **Type-safe matchers** (`expect.any(Type)`)
+20. ✅ **Testing middleware in isolation** (errorHandler complete coverage)
+21. ✅ **Mock cleanup patterns** (mockRestore, environment restoration)
+22. ✅ **AppError prototype chain** (`Object.setPrototypeOf`, `Error.captureStackTrace`, `isOperational`)
 
 ### 🎯 **Next Session - Pick Up Here:**
 
-**Options for next session:**
+## 📋 **SESSION STARTUP PROMPT FOR NEXT AGENT**
 
-**Option A: Continue Learning Path (Recommended)**
-```
-Let's implement HTTPS for the backend! (Task #2 in TODO.md)
+**Context:** This is a pet project for learning full-stack development best practices from an SDET/Lead QA perspective. I'm working as an SDET and want to improve both my testing skills and full-stack development knowledge. My goal is to learn senior-level development patterns, especially around testing (unit, integration, e2e), while building practical features.
 
-Goals:
-- Generate development certificates with mkcert
-- Configure Express to use HTTPS
-- Update Helmet configuration for HSTS
-- Test secure connections locally
+**Current State:**
+- ✅ Express 5 backend with SQLite + Prisma ORM
+- ✅ 68 unit tests passing (100% coverage on controllers + errorHandler middleware)
+- ✅ Mastered advanced unit testing patterns (spies, environment mocking, isolation)
+- ✅ Understanding of TDD red-green-refactor cycle
+- 📂 See `@TODO.md` for full context and `backend/tests/README.md` for testing patterns
 
-This will teach practical TLS/SSL concepts and security headers.
+**My Next Goals (in priority order):**
+
+**Priority 1: PostgreSQL Migration**
+```
+Migrate from SQLite to PostgreSQL (Phase 2 of planned migration path)
+
+Tasks:
+1. Update Prisma schema (provider: "postgresql")
+2. Update DATABASE_URL for PostgreSQL connection
+3. Run Prisma migrations
+4. Verify unit tests still pass (they should - fully mocked!)
+5. Test application manually
+
+Learning Goals:
+- Database migration strategies
+- Connection string management
+- Environment variable best practices
+- Understanding why unit tests are DB-agnostic
 ```
 
-**Option B: Expand Testing**
+**Priority 2: Password Reset Feature (TDD Approach)**
 ```
-Let's add more test coverage:
-- Unit tests for middleware (auth.ts, security.ts)
-- Unit tests for errorHandler middleware
-- Learn to test Express middleware in isolation
+Implement password reset functionality using Test-Driven Development
+
+TDD Workflow:
+1. Write failing tests FIRST for forgot-password endpoint
+2. Implement just enough code to make tests pass (green)
+3. Refactor if needed
+4. Write failing tests for reset-password endpoint
+5. Implement and make tests pass
+6. Run full test suite to ensure no regressions
+
+Feature Requirements:
+- POST /api/auth/forgot-password (generate reset token)
+- POST /api/auth/reset-password (reset with token)
+- Token-based system (JWT or crypto.randomBytes)
+- Dummy email service (console.log for now)
+- Token expiration (15-30 min)
+- Security measures (rate limiting consideration)
+
+Database Changes:
+- Add resetToken: String? to User model
+- Add resetTokenExpires: DateTime? to User model
+
+Learning Goals:
+- TDD red-green-refactor cycle in practice
+- Writing tests before implementation
+- Token management patterns
+- Security considerations for password reset flows
+- How mocking makes TDD easier (no DB setup needed!)
 ```
 
-**Option C: Add New Feature**
-```
-Implement password reset functionality (Task #3)
-- Practice adding new endpoints
-- Learn token-based flows
-- Apply unit testing to new code (TDD approach)
-```
+**My Learning Style:**
+- I prefer understanding "why" over "what"
+- I want senior dev perspective on best practices
+- I value clean, atomic patterns and proper isolation
+- I like TLDR explanations for complex concepts
+- I learn best when building practical features with proper testing
 
-### 🚀 **Future Sessions:**
-2. Implement HTTPS for learning
-3. Add password reset feature
-4. Migrate to PostgreSQL + Docker
+**What I DON'T need:**
+- Don't skip testing - tests are critical for my learning
+- Don't oversimplify - I can handle senior-level concepts
+- Don't implement without tests - I want to learn TDD properly
+
+**Instructions for Agent:**
+1. Read `@TODO.md` to understand full project context
+2. Start with Priority 1 (PostgreSQL migration) OR Priority 2 (Password Reset TDD)
+3. If doing Password Reset: Write tests FIRST, then implement (pure TDD)
+4. Explain senior dev patterns and best practices as we work
+5. Keep the same teaching style from previous sessions (thorough, practical, SDET-focused)
+
+Pick up from here and guide me through the next phase of development!
+
+### 🚀 **Completed Sessions Summary:**
+1. ✅ **Session 2025-11-04:** Project analysis, cleaned up test structure
+2. ✅ **Session 2025-11-12:** Implemented controller unit tests (49 tests)
+3. ✅ **Session 2025-11-17:** Express 5 refactor, removed asyncHandler
+4. ✅ **Session 2025-11-19:** ErrorHandler middleware tests (19 tests), advanced mocking patterns
+
+### 🚀 **Next Sessions Roadmap:**
+1. **PostgreSQL Migration** - Database migration best practices
+2. **Password Reset (TDD)** - Pure test-driven development workflow
+3. **HTTPS Implementation** - Security and certificate management
+4. **Docker + Multi-container** - Production deployment patterns
 
 ### 🧠 **Key Decisions Made:**
 - ✅ SQLite → PostgreSQL → Docker (phased approach)

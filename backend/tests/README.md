@@ -6,27 +6,29 @@ This project follows **TRUE unit testing principles** with complete dependency m
 
 **Architecture:** Express 5 with native async error handling (no `asyncHandler` wrapper needed!)
 
-**Latest Update (2025-11-17):** Refactored to use Express 5 native features, removed redundant `asyncHandler` wrapper, updated all tests to modern error testing pattern.
+**Latest Update (2025-11-19):** Added comprehensive errorHandler middleware tests demonstrating advanced mocking patterns (console spying, environment mocking, test isolation).
 
 ## Test Structure
 
 ```
 tests/
 ├── unit/
-│   ├── setup.ts                           # Mock factories & test utilities
-│   └── controllers/
-│       ├── auth.controller.test.ts        # 26 tests, 100% coverage
-│       └── todos.controller.test.ts       # 23 tests, 100% coverage
-└── README.md                              # This file
+│   ├── setup.ts                              # Mock factories & test utilities
+│   ├── controllers/
+│   │   ├── auth.controller.test.ts           # 26 tests, 100% coverage
+│   │   └── todos.controller.test.ts          # 23 tests, 100% coverage
+│   └── middleware/
+│       └── errorHandler.test.ts              # 19 tests, 100% coverage
+└── README.md                                 # This file
 ```
 
 ## Key Principles Applied
 
 ### 1. **True Unit Testing**
-- ✅ **All external dependencies mocked** (Prisma, bcrypt, JWT)
+- ✅ **All external dependencies mocked** (Prisma, bcrypt, JWT, console, env)
 - ✅ **No database connections** (even test databases)
 - ✅ **No network calls** or file I/O
-- ✅ **Fast execution**: 49 tests in ~7 seconds
+- ✅ **Fast execution**: 68 tests in ~8 seconds
 - ✅ **Tests business logic only**, not infrastructure
 
 ### 2. **TDD-Ready Architecture**
@@ -79,6 +81,40 @@ tests/
   - Successful deletion (2 tests)
   - Authorization checks (3 tests)
   - Error handling (2 tests)
+
+### ErrorHandler Middleware (19 tests)
+- **AppError handling**: 3 tests
+  - Uses correct statusCode and message
+  - Respects isOperational flag
+  - Returns consistent JSON format
+
+- **Generic Error handling**: 3 tests
+  - Defaults to 500 for non-AppError
+  - Returns "Internal server error" message
+  - Marks as non-operational
+
+- **Environment-based behavior**: 3 tests
+  - Includes stack trace in development (non-operational errors)
+  - Excludes stack trace in production
+  - Never exposes stack for operational errors
+
+- **Logging behavior**: 3 tests
+  - Logs error details with context (URL, method, timestamp)
+  - Logs request metadata
+  - Logs stack traces for debugging
+
+- **Prototype chain**: 2 tests
+  - instanceof AppError works correctly
+  - instanceof Error works correctly
+
+- **Response format consistency**: 3 tests
+  - Always returns JSON
+  - Always has error property
+  - Status code matches error type
+
+- **Edge cases**: 2 tests
+  - Handles errors without message
+  - Handles errors without stack trace
 
 ## Running Tests
 
@@ -186,12 +222,111 @@ describe('myController()', () => {
 └─────────────────────────────────────┘
 ```
 
+## Advanced Mocking Patterns (Session 2025-11-19)
+
+This session demonstrated advanced unit testing techniques beyond basic dependency mocking:
+
+### 1. **Console Spying Pattern**
+```typescript
+// Spy on console.error to verify logging without polluting test output
+consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+// Verify logging behavior
+expect(consoleErrorSpy).toHaveBeenCalledWith(
+  'Error occurred:',
+  expect.objectContaining({ statusCode: 401, message: 'Unauthorized' })
+);
+
+// Always restore in afterEach
+consoleErrorSpy.mockRestore();
+```
+
+**Why**: Test side effects (logging) without cluttering test output.
+
+### 2. **Environment Variable Mocking**
+```typescript
+// Save original environment
+originalEnv = process.env.NODE_ENV;
+
+// Set for test
+process.env.NODE_ENV = 'development';
+
+// Restore in afterEach (critical for isolation!)
+if (originalEnv !== undefined) {
+  process.env.NODE_ENV = originalEnv;
+} else {
+  delete process.env.NODE_ENV;
+}
+```
+
+**Why**: Test environment-specific behavior (dev vs prod) without test leakage.
+
+### 3. **Partial Object Matching**
+```typescript
+// Verify only relevant properties
+expect(consoleErrorSpy).toHaveBeenCalledWith(
+  'Error occurred:',
+  expect.objectContaining({  // Only verify what matters
+    statusCode: 400,
+    isOperational: true,
+  })
+);
+```
+
+**Why**: Don't make tests brittle by asserting dynamic values (timestamps, UUIDs).
+
+### 4. **Parametric Testing**
+```typescript
+// Test multiple scenarios efficiently
+const errors = [
+  new AppError(404, 'Not Found'),
+  new Error('Generic Error'),
+  new AppError(403, 'Forbidden'),
+];
+
+errors.forEach((error) => {
+  jest.clearAllMocks();  // Reset between iterations
+  errorHandler(error, req, res, next);
+  expect(res.json).toHaveBeenCalledWith(
+    expect.objectContaining({ error: expect.any(String) })
+  );
+});
+```
+
+**Why**: Test behavior that should work across multiple inputs efficiently.
+
+### 5. **Type-Safe Matchers**
+```typescript
+// Verify structure without caring about exact values
+expect(res.json).toHaveBeenCalledWith({
+  error: expect.any(String),  // Don't care WHAT string, just that it's a string
+});
+
+expect.objectContaining({
+  timestamp: expect.any(String),  // Timestamp will differ each run
+});
+```
+
+**Why**: Test contracts, not implementations. Focus on data types and structure.
+
 ## Next Steps
 
 1. **Write More Unit Tests**
    - [ ] Middleware unit tests (auth.ts, security.ts)
    - [ ] Utility functions (if any)
    - [ ] Validation schemas
+
+2. **Migrate to PostgreSQL**
+   - [ ] Update Prisma schema provider
+   - [ ] Update DATABASE_URL
+   - [ ] Run migrations
+   - [ ] Verify tests still pass (they should - fully mocked!)
+
+3. **Implement Password Reset (TDD)**
+   - [ ] Write tests FIRST for password reset endpoints
+   - [ ] Implement forgot-password endpoint
+   - [ ] Implement reset-password endpoint
+   - [ ] All following TDD red-green-refactor cycle
 
 
 ## Benefits of This Approach
