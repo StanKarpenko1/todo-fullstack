@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import DOMPurify from 'isomorphic-dompurify';
+import { AppError } from './errorHandler';
 
 // Input sanitization middleware 
 export const sanitizeInput = (req: Request, res: Response, next: NextFunction) => {
@@ -31,16 +32,14 @@ export const sanitizeInput = (req: Request, res: Response, next: NextFunction) =
 // Request size limiting
 export const limitRequestSize = (req: Request, res: Response, next: NextFunction) => {
   const maxSize = 1024 * 1024; // 1MB limit
-  
+
   if (req.headers['content-length']) {
     const contentLength = parseInt(req.headers['content-length']);
     if (contentLength > maxSize) {
-      return res.status(413).json({ 
-        error: 'Request entity too large',
-        maxSize: `${maxSize / 1024 / 1024}MB`
-      });
+      // Throw AppError instead of manual response (consistent with other middleware)
+      throw new AppError(413, 'Request entity too large. Maximum size: 1MB');
     }
   }
-  
+
   next();
 };
