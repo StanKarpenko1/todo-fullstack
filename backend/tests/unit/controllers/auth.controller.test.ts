@@ -1,3 +1,4 @@
+
 /**
  * Unit Tests for Auth Controller
  *
@@ -7,23 +8,27 @@
  * - Fast execution (no database, no network)
  * - Each test is independent and isolated
  * - Follows AAA pattern: Arrange, Act, Assert
- */
+*/
 
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { register, login } from '../../../src/controllers/auth.controller';
+import { register, login, forgotPassword } from '../../../src/controllers/auth.controller';
 import {
   createMockRequest,
   createMockResponse,
   createMockUser,
   setupTestEnv,
 } from '../setup';
+import crypto from 'crypto';
 
 // Mock all external dependencies
 jest.mock('bcryptjs');
 jest.mock('jsonwebtoken');
+jest.mock('crypto', () => ({
+  randomBytes: jest.fn(),
+}));
 
 // Mock Prisma Client - must define mocks inside the factory function
 jest.mock('@prisma/client', () => {
@@ -431,6 +436,208 @@ describe('Auth Controller - Unit Tests', () => {
 
         // ACT & ASSERT
         await expect(login(req, res)).rejects.toThrow('Bcrypt error');
+      });
+    });
+  });
+
+  describe('forgotPassword()', () => {
+    const RESET_SUCCESS_MESSAGE = 'Reset link has been sent';
+
+    describe('successful token generation', () => {
+      it('should generate reset token for existing user', async () => {
+        // ARRANGE
+        req.body = { email: 'user@example.com' };
+        const mockUser = createMockUser({ email: 'user@example.com' });
+        mockPrismaUser.findUnique.mockResolvedValue(mockUser);
+        (crypto.randomBytes as jest.Mock).mockReturnValue(Buffer.from('a'.repeat(32)));
+        (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-token-123');
+
+        //ACT
+        await forgotPassword(req, res)
+
+        //ASSERT
+        expect(mockPrismaUser.findUnique).toHaveBeenCalledWith({
+          where: { email: req.body.email },
+        });
+        expect(crypto.randomBytes).toHaveBeenCalledWith(32);
+        expect(bcrypt.hash).toHaveBeenCalledWith(expect.any(String), 10);
+        expect(mockPrismaUser.update).toHaveBeenCalledWith({
+          where: { id: mockUser.id },
+          data: {
+            resetToken: 'hashed-token-123',
+            resetTokenExpires: expect.any(Date)
+          }
+        });
+        expect(res.json).toHaveBeenCalledWith({
+          message: RESET_SUCCESS_MESSAGE,
+          resetToken: expect.any(String)
+        });
+
+      });
+
+      it('should hash token before storing in DB', async () => {
+        // ARRANGE
+        req.body = { email: 'user@example.com' };
+        const plainToken = 'plain-token-abc123';
+        const mockUser = createMockUser({ email: 'user@example.com' });
+
+        mockPrismaUser.findUnique.mockResolvedValue(mockUser);
+        (crypto.randomBytes as jest.Mock).mockReturnValue(Buffer.from(plainToken));
+        (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-token-xyz');
+
+        // ACT
+        await forgotPassword(req, res);
+
+        // ASSERT
+        expect(bcrypt.hash).toHaveBeenCalledWith(plainToken, 10);
+        expect(mockPrismaUser.update).toHaveBeenCalledWith({
+          where: { id: mockUser.id },
+          data: {
+            resetToken: 'hashed-token-xyz',  // Hashed version stored
+            resetTokenExpires: expect.any(Date)
+          }
+        });
+      });
+
+      it('should set expiry to 1 hour from now', async () => {
+        // ARRANGE
+        req.body = { email: 'user@example.com' };
+        const mockUser = createMockUser({ email: 'user@example.com' });
+        const now = Date.now();
+        const oneHourFromNow = new Date(now + 3600000); // 3600000ms = 1 hour 
+
+        mockPrismaUser.findUnique.mockResolvedValue(mockUser);
+        (crypto.randomBytes as jest.Mock).mockReturnValue(Buffer.from('a'.repeat(32)));
+        (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-token');
+        jest.spyOn(Date, 'now').mockReturnValue(now);
+
+        // ACT
+        await forgotPassword(req, res);
+
+        //ASSERT
+        expect(mockPrismaUser.update).toHaveBeenCalledWith({
+          where: { id: mockUser.id },
+          data: {
+            resetToken: expect.any(String),
+            resetTokenExpires: oneHourFromNow
+          }
+        });
+      });
+
+      it('should return reset token in response', async () => {
+        // ARRANGE
+        req.body = { email: 'user@example.com' };
+        const mockUser = createMockUser({ email: 'user@example.com' });
+        const plainToken = 'plain-token-abc123';
+
+        mockPrismaUser.findUnique.mockResolvedValue(mockUser);
+        (crypto.randomBytes as jest.Mock).mockReturnValue(Buffer.from(plainToken));
+        (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-token-xyz');
+
+        // ACT
+        await forgotPassword(req, res);
+
+        //ASSERT
+        expect(res.json).toHaveBeenCalledWith({
+          message: RESET_SUCCESS_MESSAGE,
+          resetToken: plainToken  // Plain token sent to user
+        });
+      });
+
+      it('should return generic message for non-existent email (security)', async () => {
+        // ARRANGE
+        req.body = { email: 'nonexistent@example.com' };
+        mockPrismaUser.findUnique.mockResolvedValue(null); // User doesn't exist
+
+        // ACT
+        await forgotPassword(req, res);
+
+        //ASSERT
+        expect(mockPrismaUser.findUnique).toHaveBeenCalledWith({
+          where: { email: 'nonexistent@example.com' }
+        });
+        expect(mockPrismaUser.update).not.toHaveBeenCalled(); // No DB update
+        expect(res.json).toHaveBeenCalledWith({
+          message: RESET_SUCCESS_MESSAGE
+        });
+      });
+    });
+
+    describe('validation errors', () => {
+      it('should reject missing email', async () => {
+
+      });
+
+      it('should reject invalid email format', async () => {
+
+      });
+    });
+
+    describe('error handling', () => {
+      it('should handle database error during user lookup', async () => {
+
+      });
+
+      it('should handle database error during token update', async () => {
+
+      });
+    });
+  });
+
+  describe('resetPassword()', () => {
+    describe('successful password reset', () => {
+      it('should reset password with valid token', async () => {
+
+      });
+
+      it('should hash new password before storing', async () => {
+
+      });
+
+      it('should clear reset token after successful reset', async () => {
+
+      });
+
+      it('should clear reset token expiry after successful reset', async () => {
+
+      });
+    });
+
+    describe('validation errors', () => {
+      it('should reject missing token', async () => {
+
+      });
+
+      it('should reject missing password', async () => {
+
+      });
+
+      it('should reject password too short (<6 characters)', async () => {
+
+      });
+    });
+
+    describe('authentication failures', () => {
+      it('should reject expired token (>1 hour old)', async () => {
+
+      });
+
+      it('should reject invalid token (not found in DB)', async () => {
+
+      });
+
+      it('should reject token that does not match hash', async () => {
+
+      });
+    });
+
+    describe('error handling', () => {
+      it('should handle database error during token lookup', async () => {
+
+      });
+
+      it('should handle database error during password update', async () => {
+
       });
     });
   });
