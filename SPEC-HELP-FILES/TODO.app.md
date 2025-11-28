@@ -1,102 +1,148 @@
 # TODO - Next Development Tasks
 
+## Current Status
+
+**Test Suite:** 106 tests passing (~12 seconds)
+- 47 tests: Auth controllers (register, login, forgotPassword, resetPassword)
+- 23 tests: Todo controllers (CRUD operations)
+- 14 tests: Auth middleware (JWT validation)
+- 14 tests: Security middleware (input sanitization)
+- 10 tests: Request size limiting
+- Coverage: 100% statement coverage on all controllers & middleware
+
+**Architecture:** Express 5, TypeScript, Prisma ORM, SQLite
+**Security:** See `SPEC-HELP-FILES/TODO.sec.md` for detailed security status
+
+---
+
 ## High Priority Tasks
 
-### 1. 🧪 Write Proper Unit Tests ✅ COMPLETED
-**Status:** 49 tests passing, 100% statement coverage, Express 5 architecture
+### 1. 🗄️ PostgreSQL Migration (NEXT TASK)
+**Priority:** HIGH - Foundation for Docker deployment
+
+**Why:**
+- SQLite limitations for production (no concurrent writes)
+- Practice database migration strategies
+- Preparation for Docker multi-container setup
+- Learn connection string management
 
 **What to do:**
-- **Mock all external dependencies** (Prisma, bcrypt, jwt)
-- **Test controller functions in isolation** without HTTP requests
-- **No database or HTTP layer** in unit tests
-- **Focus on business logic testing** only
+1. **Update Prisma Schema**
+   - Change provider from "sqlite" to "postgresql"
+   - Update connection string in DATABASE_URL
+2. **Setup PostgreSQL**
+   - Install PostgreSQL locally OR use Docker container
+   - Create new database: `createdb todo_dev`
+3. **Run Migration**
+   - `npx prisma migrate dev --name switch_to_postgresql`
+   - `npx prisma generate`
+4. **Verify Tests**
+   - Run `npm test` - all tests should pass (mocked!)
+   - Unit tests are DB-agnostic (fully mocked)
+5. **Manual Testing**
+   - Test API endpoints manually
+   - Verify data persistence
 
-**Structure:**
+**Benefits:**
+- 🎯 Learn database migration patterns
+- 🔧 Understand connection pooling
+- 📚 Real-world production practices
+- 🐳 Ready for Docker containerization
+
+---
+
+### 2. 🔒 HTTPS Understanding (DEPLOYMENT PRIORITY - Moved)
+**Priority:** LOW for now - Deferred to deployment phase
+**Status:** Moved to deployment priorities
+
+**Decision:**
+- ❌ **Not implementing locally** - Unnecessary complexity for development
+- ✅ **Already production-ready** - Helmet configured for production HTTPS
+- ✅ **Platform handles it** - Vercel/Railway provide automatic HTTPS
+- 🎓 **Learn during deployment** - Better timing when actually needed
+
+**What you already have:**
+```javascript
+// backend/src/server.ts - Production-ready configuration
+app.use(helmet({
+  hsts: process.env.NODE_ENV === 'production' ? {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  } : false  // Disabled in dev (correct!)
+}));
 ```
-tests/
+
+**Why skip for now:**
+- Local HTTPS adds certificate management complexity
+- Your JWT-based auth doesn't require HTTPS cookies
+- Modern platforms handle HTTPS automatically
+- Better to learn HTTPS concepts during actual deployment
+
+**Reference:** See `SPEC-HELP-FILES/TODO.sec.md` for detailed HTTPS concepts and deployment checklist
+
+---
+
+### 3. 🧪 Unit Tests ✅ COMPLETED
+**Status:** ✅ 106 tests passing, 100% coverage, Express 5 architecture
+
+**Completed:**
+- ✅ Auth controller tests (47 tests - register, login, forgotPassword, resetPassword)
+- ✅ Todo controller tests (23 tests - CRUD operations)
+- ✅ Auth middleware tests (14 tests - JWT validation)
+- ✅ Security middleware tests (14 tests - input sanitization, XSS prevention)
+- ✅ Request size limiting tests (10 tests - DoS prevention)
+- ✅ ErrorHandler middleware tests (100% coverage)
+
+**Test Structure:**
+```
+backend/tests/
   unit/
     controllers/
-      auth.controller.test.ts    ← NEW: Mock Prisma, bcrypt, jwt
-      todos.controller.test.ts   ← NEW: Mock Prisma
-  middleware.test.ts             ← KEPT: Auth middleware tests
-  setup.ts                       ← KEPT: Will update for unit tests
+      auth.controller.test.ts    ✅ 47 tests
+      todos.controller.test.ts   ✅ 23 tests (not shown in original - added later)
+    middleware/
+      auth.test.ts               ✅ 14 tests
+      security.test.ts           ✅ 24 tests
+      errorHandler.test.ts       ✅ (coverage complete)
+    setup.ts                     ✅ Mock utilities
 ```
 
-**Deleted (moved to Cypress later):**
-- ❌ auth.test.ts (integration tests)
-- ❌ todos.test.ts (integration tests)
-- ❌ security.test.ts (integration tests)
-
-**Benefits:**
-- ✅ Fast, reliable tests (1-5ms each)
-- ✅ No database pollution
+**Benefits Achieved:**
+- ✅ Fast test execution (~12 seconds for 106 tests)
+- ✅ No database dependencies
 - ✅ True unit test isolation
-- ✅ Easier debugging when logic breaks
-
-**Note:** E2E tests will be added with Cypress later
+- ✅ TDD workflow practiced (password reset feature)
 
 ---
 
-### 2. 🔒 Implement HTTPS (LEARNING)
-**Why:** Essential security concept to understand practically.
+### 4. 📧 Password Reset Feature ✅ COMPLETED
+**Status:** ✅ Implemented using TDD approach (RED → GREEN → REFACTOR)
 
-**What to do:**
-- **Generate development certificates** using mkcert
-- **Update server.ts** to support HTTPS in development
-- **Configure Helmet** for HSTS headers
-- **Test HTTPS functionality** locally
-- **Document the process** in security guide
+**Completed Features:**
+- ✅ `POST /api/auth/forgot-password` - Generate reset token
+- ✅ `POST /api/auth/reset-password` - Reset password with token
+- ✅ Token-based system using crypto.randomBytes(32)
+- ✅ Token hashing with bcrypt (10 rounds)
+- ✅ 1-hour token expiry
+- ✅ Rate limiting (5 requests per 15 minutes on forgot-password)
+- ✅ User enumeration prevention (generic messages)
+- ✅ 21 unit tests for password reset flow
 
-**Implementation:**
-```
-backend/
-  certs/
-    localhost+2.pem         ← Certificate
-    localhost+2-key.pem     ← Private key
-  src/
-    https-server.ts         ← HTTPS configuration
-```
+**Key Security Patterns Implemented:**
+- Token generation: `crypto.randomBytes(32).toString('hex')`
+- Token storage: Hashed with bcrypt (never plaintext)
+- Token validation: `bcrypt.compare()` for verification
+- Single-use tokens: Cleared after successful reset
+- Time-limited tokens: 1-hour expiry window
 
-**Benefits:**
-- 🎓 Learn TLS/SSL concepts
-- 🛡️ Practice security implementation
-- 📚 Understand production deployment patterns
-
----
-
-### 3. 📧 Add Password Reset Functionality (DUMMY)
-**Why:** Common authentication feature, good practice for email integration patterns.
-
-**What to do:**
-- **Create reset token system** (JWT-based for simplicity)
-- **Add database fields** for reset tokens
-- **Implement API endpoints:**
-  - `POST /api/auth/forgot-password` - Generate reset token
-  - `POST /api/auth/reset-password` - Reset with token
-- **Dummy email service** (console.log for now)
-- **Add validation** and security measures
-
-**Database Changes:**
-```sql
--- Add to User model
-resetToken: String?
-resetTokenExpires: DateTime?
-```
-
-**Endpoints:**
-- `POST /forgot-password` → Generate token, "send" email
-- `POST /reset-password` → Verify token, update password
-
-**Benefits:**
-- 🔐 Complete auth flow
-- 🏗️ Practice token management
-- 📧 Foundation for real email service later
+**Reference:** See `SPEC-FILES/TDD-GUIDE.md` for TDD patterns used
 
 ---
 
 ## Future Enhancements
 
-### 4. 🐳 Docker + PostgreSQL Migration (PLANNED)
+### 5. 🐳 Docker Multi-Container Setup (AFTER POSTGRESQL)
 **Pattern:** SQLite (prototype) → PostgreSQL (production) → Docker
 
 **Phase 1: Keep SQLite (Current)**
@@ -275,61 +321,56 @@ Coverage: Controllers 100% | ErrorHandler Middleware 100%
 
 **Current State:**
 - ✅ Express 5 backend with SQLite + Prisma ORM
-- ✅ 68 unit tests passing (100% coverage on controllers + errorHandler middleware)
-- ✅ Mastered advanced unit testing patterns (spies, environment mocking, isolation)
-- ✅ Understanding of TDD red-green-refactor cycle
-- 📂 See `@TODO.md` for full context and `backend/tests/README.md` for testing patterns
+- ✅ 106 unit tests passing (100% coverage on controllers + all middleware)
+- ✅ Mastered TDD workflow (password reset feature implemented with TDD)
+- ✅ Advanced testing patterns (mocking, spies, environment mocking, isolation)
+- ✅ Security middleware fully tested (auth, sanitization, rate limiting)
+- 📂 See `SPEC-HELP-FILES/TODO.app.md` for full context
+- 📂 See `SPEC-FILES/TDD-GUIDE.md` for TDD patterns
+- 📂 See `SPEC-HELP-FILES/TODO.sec.md` for security status
 
 **My Next Goals (in priority order):**
 
-**Priority 1: PostgreSQL Migration**
+**Priority 1: PostgreSQL Migration (NEXT TASK)**
 ```
 Migrate from SQLite to PostgreSQL (Phase 2 of planned migration path)
 
 Tasks:
 1. Update Prisma schema (provider: "postgresql")
-2. Update DATABASE_URL for PostgreSQL connection
-3. Run Prisma migrations
-4. Verify unit tests still pass (they should - fully mocked!)
-5. Test application manually
+2. Setup PostgreSQL (local install OR Docker container)
+3. Update DATABASE_URL for PostgreSQL connection
+4. Run Prisma migrations
+5. Verify unit tests still pass (they should - fully mocked!)
+6. Test application manually
 
 Learning Goals:
 - Database migration strategies
 - Connection string management
 - Environment variable best practices
 - Understanding why unit tests are DB-agnostic
+- Connection pooling concepts
 ```
 
-**Priority 2: Password Reset Feature (TDD Approach)**
+**Priority 2: Docker + Multi-Container Setup**
 ```
-Implement password reset functionality using Test-Driven Development
+Containerize application with Docker (requires PostgreSQL first)
 
-TDD Workflow:
-1. Write failing tests FIRST for forgot-password endpoint
-2. Implement just enough code to make tests pass (green)
-3. Refactor if needed
-4. Write failing tests for reset-password endpoint
-5. Implement and make tests pass
-6. Run full test suite to ensure no regressions
-
-Feature Requirements:
-- POST /api/auth/forgot-password (generate reset token)
-- POST /api/auth/reset-password (reset with token)
-- Token-based system (JWT or crypto.randomBytes)
-- Dummy email service (console.log for now)
-- Token expiration (15-30 min)
-- Security measures (rate limiting consideration)
-
-Database Changes:
-- Add resetToken: String? to User model
-- Add resetTokenExpires: DateTime? to User model
+Tasks:
+1. Create Dockerfile for backend (Node.js)
+2. Create Dockerfile for frontend (React + Nginx) - when ready
+3. Create docker-compose.yml (multi-container orchestration)
+4. Configure PostgreSQL container
+5. Set up container networking
+6. Test local Docker deployment
 
 Learning Goals:
-- TDD red-green-refactor cycle in practice
-- Writing tests before implementation
-- Token management patterns
-- Security considerations for password reset flows
-- How mocking makes TDD easier (no DB setup needed!)
+- Docker containerization patterns
+- Multi-container orchestration with docker-compose
+- Container networking and volumes
+- Environment variable management across containers
+- Production deployment preparation
+
+Reference: Standard Docker best practices for Node.js and PostgreSQL
 ```
 
 **My Learning Style:**
@@ -345,9 +386,9 @@ Learning Goals:
 - Don't implement without tests - I want to learn TDD properly
 
 **Instructions for Agent:**
-1. Read `@TODO.md` to understand full project context
-2. Start with Priority 1 (PostgreSQL migration) OR Priority 2 (Password Reset TDD)
-3. If doing Password Reset: Write tests FIRST, then implement (pure TDD)
+1. Read `SPEC-HELP-FILES/TODO.app.md` to understand full project context
+2. Read `SPEC-HELP-FILES/TODO.sec.md` for security implementation status
+3. Start with Priority 1 (PostgreSQL migration) OR Priority 2 (HTTPS implementation)
 4. Explain senior dev patterns and best practices as we work
 5. Keep the same teaching style from previous sessions (thorough, practical, SDET-focused)
 
@@ -358,12 +399,15 @@ Pick up from here and guide me through the next phase of development!
 2. ✅ **Session 2025-11-12:** Implemented controller unit tests (49 tests)
 3. ✅ **Session 2025-11-17:** Express 5 refactor, removed asyncHandler
 4. ✅ **Session 2025-11-19:** ErrorHandler middleware tests (19 tests), advanced mocking patterns
+5. ✅ **Session 2025-11-23:** Auth middleware tests (14 tests), consistent error handling
+6. ✅ **Session 2025-11-24:** Security middleware tests (24 tests), password reset TDD implementation
+7. ✅ **Session 2025-11-28:** Documentation organization (SPEC-FILES/, guides created), TODO.app.md update
 
 ### 🚀 **Next Sessions Roadmap:**
-1. **PostgreSQL Migration** - Database migration best practices
-2. **Password Reset (TDD)** - Pure test-driven development workflow
-3. **HTTPS Implementation** - Security and certificate management
-4. **Docker + Multi-container** - Production deployment patterns
+1. **PostgreSQL Migration** - Database migration best practices (NEXT)
+2. **Docker + Multi-container** - Production deployment patterns
+3. **Frontend Development** - React + TypeScript + Vite
+4. **Deployment + HTTPS** - Learn HTTPS during actual deployment
 
 ### 🧠 **Key Decisions Made:**
 - ✅ SQLite → PostgreSQL → Docker (phased approach)
