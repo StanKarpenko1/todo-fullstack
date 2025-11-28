@@ -14,7 +14,7 @@ import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { register, login, forgotPassword } from '../../../src/controllers/auth.controller';
+import { register, login, forgotPassword, resetPassword } from '../../../src/controllers/auth.controller';
 import {
   createMockRequest,
   createMockResponse,
@@ -35,6 +35,8 @@ jest.mock('@prisma/client', () => {
   const mockPrismaUser = {
     findUnique: jest.fn(),
     create: jest.fn(),
+    update: jest.fn(),
+    findFirst: jest.fn()
   };
 
   return {
@@ -482,7 +484,9 @@ describe('Auth Controller - Unit Tests', () => {
         const mockUser = createMockUser({ email: 'user@example.com' });
 
         mockPrismaUser.findUnique.mockResolvedValue(mockUser);
-        (crypto.randomBytes as jest.Mock).mockReturnValue(Buffer.from(plainToken));
+        (crypto.randomBytes as jest.Mock).mockReturnValue({
+          toString: jest.fn().mockReturnValue(plainToken)
+        });
         (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-token-xyz');
 
         // ACT
@@ -531,7 +535,9 @@ describe('Auth Controller - Unit Tests', () => {
         const plainToken = 'plain-token-abc123';
 
         mockPrismaUser.findUnique.mockResolvedValue(mockUser);
-        (crypto.randomBytes as jest.Mock).mockReturnValue(Buffer.from(plainToken));
+        (crypto.randomBytes as jest.Mock).mockReturnValue({
+          toString: jest.fn().mockReturnValue(plainToken)
+        });
         (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-token-xyz');
 
         // ACT
@@ -565,20 +571,50 @@ describe('Auth Controller - Unit Tests', () => {
 
     describe('validation errors', () => {
       it('should reject missing email', async () => {
+        // ARRANGE
+        req.body = {};
 
+        // ACT & ASSERT
+        await expect(forgotPassword(req, res)).rejects.toThrow('Email is required');
+        expect(mockPrismaUser.findUnique).not.toHaveBeenCalled();
       });
 
       it('should reject invalid email format', async () => {
+        // ARRANGE
+        req.body = { email: 'not-an-email' }; // Invalid format
 
+        // ACT & ASSERT
+        await expect(forgotPassword(req, res)).rejects.toThrow('Please provide a valid email address');
+        expect(mockPrismaUser.findUnique).not.toHaveBeenCalled();
       });
     });
 
     describe('error handling', () => {
       it('should handle database error during user lookup', async () => {
 
+        req.body = { email: 'user@example.com' }
+
+        mockPrismaUser.findUnique.mockRejectedValue(
+          new Error('Database connection failed')
+        );
+
+        await expect(forgotPassword(req, res)).rejects.toThrow('Database connection failed')
       });
 
       it('should handle database error during token update', async () => {
+        // ARRANGE
+        req.body = { email: 'user@example.com' };
+        const mockUser = createMockUser({ email: 'user@example.com' });
+
+        mockPrismaUser.findUnique.mockResolvedValue(mockUser);
+        (crypto.randomBytes as jest.Mock).mockReturnValue(Buffer.from('a'.repeat(32)));
+        (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-token');
+        mockPrismaUser.update.mockRejectedValue(
+          new Error('Failed to update user')
+        );
+
+        // ACT & ASSERT
+        await expect(forgotPassword(req, res)).rejects.toThrow('Failed to update user');
 
       });
     });
@@ -587,57 +623,240 @@ describe('Auth Controller - Unit Tests', () => {
   describe('resetPassword()', () => {
     describe('successful password reset', () => {
       it('should reset password with valid token', async () => {
+        // ARRANGE
+        req.body = { token: 'valid-token-123', newPassword: 'newPass123' };
+        const mockUser = createMockUser({
+          id: 'user-id',
+          email: 'user@example.com',
+          resetToken: 'hashed-token-abc',
+          resetTokenExpires: new Date(Date.now() + 3600000) // Not expired
+        });
 
+        mockPrismaUser.findFirst.mockResolvedValue(mockUser);
+        (bcrypt.compare as jest.Mock).mockResolvedValue(true); // Token matches 
+        (bcrypt.hash as jest.Mock).mockResolvedValue('new-hashed-password-xyz');
+         mockPrismaUser.update.mockResolvedValue(mockUser);
+
+        // ACT 
+        await resetPassword(req, res);
+
+        // ASSERT
+        expect(mockPrismaUser.findFirst).toHaveBeenCalledWith({
+          where: {
+            resetToken: { not: null },
+            resetTokenExpires: { gt: expect.any(Date) }
+          }
+        });
+        expect(bcrypt.compare).toHaveBeenCalledWith('valid-token-123', 'hashed-token-abc');
+        expect(bcrypt.hash).toHaveBeenCalledWith('newPass123', 12);
+        expect(mockPrismaUser.update).toHaveBeenCalledWith({
+          where: { id: 'user-id' },
+          data: {
+            password: 'new-hashed-password-xyz',
+            resetToken: null,
+            resetTokenExpires: null
+          }
+        });
+        expect(res.json).toHaveBeenCalledWith({
+          message: 'Password reset successful'
+        });
       });
 
       it('should hash new password before storing', async () => {
+        // ARRANGE
+        req.body = { token: 'valid-token', newPassword: 'myNewPassword123' };
 
+        const mockUser = createMockUser({
+          id: 'user-id',
+          resetToken: 'hashed-token',
+          resetTokenExpires: new Date(Date.now() + 3600000)
+        });
+
+        mockPrismaUser.findFirst.mockResolvedValue(mockUser);
+        (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+        (bcrypt.hash as jest.Mock).mockResolvedValue('new-hashed-password');
+        mockPrismaUser.update.mockResolvedValue(mockUser);
+
+        // ACT
+        await resetPassword(req, res);
+
+        // ASSERT
+        expect(bcrypt.hash).toHaveBeenCalledWith('myNewPassword123', 12);
+        expect(mockPrismaUser.update).toHaveBeenCalledWith({
+          where: { id: 'user-id' },
+          data: {
+            password: 'new-hashed-password', // Hashed version stored
+            resetToken: null,
+            resetTokenExpires: null
+          }
+        });
       });
 
       it('should clear reset token after successful reset', async () => {
+        // ARRANGE
+        req.body = { token: 'valid-token', newPassword: 'newPass123' };
+        const mockUser = createMockUser({
+          id: 'user-id',
+          resetToken: 'hashed-token',
+          resetTokenExpires: new Date(Date.now() + 3600000)
+        });
 
+        mockPrismaUser.findFirst.mockResolvedValue(mockUser);
+        (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+        (bcrypt.hash as jest.Mock).mockResolvedValue('new-hashed-password');
+
+        // ACT
+        await resetPassword(req, res);
+
+        // ASSERT
+        expect(mockPrismaUser.update).toHaveBeenCalledWith({
+          where: { id: 'user-id' },
+          data: {
+            password: expect.any(String),
+            resetToken: null,  // Token cleared (single-use)
+            resetTokenExpires: null
+          }
+        });
       });
 
       it('should clear reset token expiry after successful reset', async () => {
 
+        // ARRANGE
+        req.body = { token: 'valid-token', newPassword: 'newPass123' };
+        const mockUser = createMockUser({
+          id: 'user-id',
+          resetToken: 'hashed-token',
+          resetTokenExpires: new Date(Date.now() + 3600000)
+        });
+
+        mockPrismaUser.findFirst.mockResolvedValue(mockUser);
+        (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+        (bcrypt.hash as jest.Mock).mockResolvedValue('new-hashed-password');
+
+        // ACT
+        await resetPassword(req, res);
+
+        // ASSERT
+        expect(mockPrismaUser.update).toHaveBeenCalledWith({
+          where: { id: 'user-id' },
+          data: {
+            password: expect.any(String),
+            resetToken: null,
+            resetTokenExpires: null // Expiry cleared
+          }
+        });
       });
     });
 
     describe('validation errors', () => {
       it('should reject missing token', async () => {
+        // ARRANGE
+        req.body = { newPassword: 'newPass123' }; // Token missing
 
+        // ACT & ASSERT
+        await expect(resetPassword(req, res)).rejects.toThrow('Reset token is required');
+        expect(mockPrismaUser.findFirst).not.toHaveBeenCalled();
       });
 
       it('should reject missing password', async () => {
+        // ARRANGE
+        req.body = { token: 'valid-token' }; // Password missing
 
+        // ACT & ASSERT
+        await expect(resetPassword(req, res)).rejects.toThrow('New password is required');
+        expect(mockPrismaUser.findFirst).not.toHaveBeenCalled();
       });
 
       it('should reject password too short (<6 characters)', async () => {
+        // ARRANGE
+        req.body = { token: 'valid-token', newPassword: '12345' }; // Only 5 chars
 
+        // ACT & ASSERT
+        await expect(resetPassword(req, res)).rejects.toThrow('Password must be at least 6 characters long');
+        expect(mockPrismaUser.findFirst).not.toHaveBeenCalled();
       });
     });
 
     describe('authentication failures', () => {
       it('should reject expired token (>1 hour old)', async () => {
+        // ARRANGE
+        req.body = { token: 'valid-token', newPassword: 'newPass123' };
 
+        // Mock: No user found (token expired, filtered out by gt query)
+        mockPrismaUser.findFirst.mockResolvedValue(null);
+
+        // ACT & ASSERT
+        await expect(resetPassword(req, res)).rejects.toThrow('Invalid or expired reset token');
+        expect(mockPrismaUser.findFirst).toHaveBeenCalledWith({
+          where: {
+            resetToken: { not: null },
+            resetTokenExpires: { gt: expect.any(Date) }
+          }
+        });
+        expect(bcrypt.compare).not.toHaveBeenCalled();
       });
 
       it('should reject invalid token (not found in DB)', async () => {
+        // ARRANGE
+        req.body = { token: 'non-existent-token', newPassword: 'newPass123' };
 
+        // Mock: No user with reset token
+        mockPrismaUser.findFirst.mockResolvedValue(null);
+
+        // ACT & ASSERT
+        await expect(resetPassword(req, res)).rejects.toThrow('Invalid or expired reset token');
+        expect(mockPrismaUser.findFirst).toHaveBeenCalled();
+        expect(bcrypt.compare).not.toHaveBeenCalled();
       });
 
       it('should reject token that does not match hash', async () => {
+        // ARRANGE
+        req.body = { token: 'wrong-token', newPassword: 'newPass123' };
+        const mockUser = createMockUser({
+          resetToken: 'hashed-token-abc',
+          resetTokenExpires: new Date(Date.now() + 3600000)
+        });
 
+        mockPrismaUser.findFirst.mockResolvedValue(mockUser);
+        (bcrypt.compare as jest.Mock).mockResolvedValue(false); // Token doesn't match      
+
+        // ACT & ASSERT
+        await expect(resetPassword(req, res)).rejects.toThrow('Invalid or expired reset token');
+        expect(bcrypt.compare).toHaveBeenCalledWith('wrong-token', 'hashed-token-abc');
+        expect(mockPrismaUser.update).not.toHaveBeenCalled();
       });
     });
 
     describe('error handling', () => {
       it('should handle database error during token lookup', async () => {
+        // ARRANGE
+        req.body = { token: 'valid-token', newPassword: 'newPass123' };
 
+        mockPrismaUser.findFirst.mockRejectedValue(
+          new Error('Database connection failed')
+        );
+
+        // ACT & ASSERT
+        await expect(resetPassword(req, res)).rejects.toThrow('Database connection failed');
       });
 
       it('should handle database error during password update', async () => {
+        // ARRANGE
+        req.body = { token: 'valid-token', newPassword: 'newPass123' };
+        const mockUser = createMockUser({
+          resetToken: 'hashed-token',
+          resetTokenExpires: new Date(Date.now() + 3600000)
+        });
 
+        mockPrismaUser.findFirst.mockResolvedValue(mockUser);
+        (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+        (bcrypt.hash as jest.Mock).mockResolvedValue('new-hashed-password');
+        mockPrismaUser.update.mockRejectedValue(
+          new Error('Failed to update password')
+        );
+
+        // ACT & ASSERT
+        await expect(resetPassword(req, res)).rejects.toThrow('Failed to update password');
       });
     });
   });
