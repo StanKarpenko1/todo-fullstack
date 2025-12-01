@@ -116,7 +116,7 @@ jobs:
 - Caches `node_modules` for faster builds
 - Uses `backend/package-lock.json` as cache key
 
-**Why cache:** Speeds up workflow (1-2 min í 30 sec).
+**Why cache:** Speeds up workflow (1-2 min ÔøΩ 30 sec).
 
 ---
 
@@ -275,7 +275,7 @@ git push
 ### Test 2: Fix the Test
 ```typescript
 it('should register user', async () => {
-  expect(true).toBe(true);  //  Fix
+  expect(true).toBe(true);  //  Fix
 });
 ```
 
@@ -286,7 +286,7 @@ git commit -m "Test: fix unit tests"
 git push
 ```
 
-**Expected:** GitHub Actions shows  green checkmark.
+**Expected:** GitHub Actions shows green checkmark.
 
 ---
 
@@ -334,7 +334,7 @@ Your project description...
 # Check trigger branches match your branch name
 on:
   push:
-    branches: [ main ]  # ê Must match your branch (main or master)
+    branches: [ main ]  # ÔøΩ Must match your branch (main or master)
 ```
 
 ### `npm ci` Fails
@@ -496,7 +496,7 @@ deploy:
 ```yaml
 - name: Deploy
   env:
-    API_KEY: ${{ secrets.API_KEY }}  # ê Set in repo settings
+    API_KEY: ${{ secrets.API_KEY }}  # ÔøΩ Set in repo settings
 ```
 
 ---
@@ -518,22 +518,22 @@ deploy:
 
 ### View Workflow Status
 ```
-GitHub repo í Actions tab í Select workflow run
+GitHub repo ÔøΩ Actions tab ÔøΩ Select workflow run
 ```
 
 ### Re-run Failed Workflow
 ```
-Actions tab í Failed workflow í "Re-run jobs"
+Actions tab ÔøΩ Failed workflow ÔøΩ "Re-run jobs"
 ```
 
 ### View Workflow Logs
 ```
-Actions tab í Workflow run í Click job í Expand step
+Actions tab ÔøΩ Workflow run ÔøΩ Click job ÔøΩ Expand step
 ```
 
 ### Cancel Running Workflow
 ```
-Actions tab í Running workflow í "Cancel workflow"
+Actions tab ÔøΩ Running workflow ÔøΩ "Cancel workflow"
 ```
 
 ---

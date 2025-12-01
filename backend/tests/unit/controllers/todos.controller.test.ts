@@ -73,7 +73,7 @@ describe('Todos Controller - Unit Tests', () => {
         // ASSERT
         expect(mockPrismaTodo.findMany).toHaveBeenCalledWith({
           where: { userId: req.user!.id },
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: 'asc' }, // { createdAt: 'desc' },
         });
         expect(res.json).toHaveBeenCalledWith({
           message: 'Todos retrieved successfully',
@@ -136,9 +136,7 @@ describe('Todos Controller - Unit Tests', () => {
     describe('error handling', () => {
       it('should throw error when database throws error', async () => {
         // ARRANGE
-        mockPrismaTodo.findMany.mockRejectedValue(
-          new Error('Database error')
-        );
+        mockPrismaTodo.findMany.mockRejectedValue(new Error('Database error'));
 
         // ACT & ASSERT
         await expect(getTodos(req, res)).rejects.toThrow('Database error');
@@ -247,7 +245,9 @@ describe('Todos Controller - Unit Tests', () => {
         req.body = { description: 'Description without title' };
 
         // ACT & ASSERT
-        await expect(createTodo(req, res)).rejects.toThrow('"title" is required');
+        await expect(createTodo(req, res)).rejects.toThrow(
+          '"title" is required'
+        );
         expect(mockPrismaTodo.create).not.toHaveBeenCalled();
       });
 
@@ -256,7 +256,9 @@ describe('Todos Controller - Unit Tests', () => {
         req.body = { title: '' };
 
         // ACT & ASSERT
-        await expect(createTodo(req, res)).rejects.toThrow('not allowed to be empty');
+        await expect(createTodo(req, res)).rejects.toThrow(
+          'not allowed to be empty'
+        );
         expect(mockPrismaTodo.create).not.toHaveBeenCalled();
       });
 
@@ -265,7 +267,9 @@ describe('Todos Controller - Unit Tests', () => {
         req.body = { title: '   ' };
 
         // ACT & ASSERT
-        await expect(createTodo(req, res)).rejects.toThrow('not allowed to be empty');
+        await expect(createTodo(req, res)).rejects.toThrow(
+          'not allowed to be empty'
+        );
         expect(mockPrismaTodo.create).not.toHaveBeenCalled();
       });
     });
@@ -456,7 +460,9 @@ describe('Todos Controller - Unit Tests', () => {
         req.body = { title: '' };
 
         // ACT & ASSERT
-        await expect(updateTodo(req, res)).rejects.toThrow('not allowed to be empty');
+        await expect(updateTodo(req, res)).rejects.toThrow(
+          'not allowed to be empty'
+        );
         expect(mockPrismaTodo.findFirst).not.toHaveBeenCalled();
       });
 
@@ -477,9 +483,7 @@ describe('Todos Controller - Unit Tests', () => {
         req.params = { id: 'todo-123' };
         req.body = { title: 'Update' };
 
-        mockPrismaTodo.findFirst.mockRejectedValue(
-          new Error('Database error')
-        );
+        mockPrismaTodo.findFirst.mockRejectedValue(new Error('Database error'));
 
         // ACT & ASSERT
         await expect(updateTodo(req, res)).rejects.toThrow('Database error');
@@ -588,9 +592,7 @@ describe('Todos Controller - Unit Tests', () => {
         // ARRANGE
         req.params = { id: 'todo-123' };
 
-        mockPrismaTodo.findFirst.mockRejectedValue(
-          new Error('Database error')
-        );
+        mockPrismaTodo.findFirst.mockRejectedValue(new Error('Database error'));
 
         // ACT & ASSERT
         await expect(deleteTodo(req, res)).rejects.toThrow('Database error');
