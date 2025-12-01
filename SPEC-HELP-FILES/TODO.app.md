@@ -2,56 +2,158 @@
 
 ## Current Status
 
-**Test Suite:** 106 tests passing (~12 seconds)
+**Test Suite:** 127 tests passing (~21 seconds)
 - 47 tests: Auth controllers (register, login, forgotPassword, resetPassword)
 - 23 tests: Todo controllers (CRUD operations)
 - 14 tests: Auth middleware (JWT validation)
-- 14 tests: Security middleware (input sanitization)
-- 10 tests: Request size limiting
+- 24 tests: Security middleware (input sanitization, request size limiting)
+- 19 tests: ErrorHandler middleware
 - Coverage: 100% statement coverage on all controllers & middleware
 
-**Architecture:** Express 5, TypeScript, Prisma ORM, SQLite
+**Architecture:** Express 5, TypeScript, Prisma ORM, PostgreSQL (Docker)
+**Database:** PostgreSQL 15 (Docker container)
 **Security:** See `SPEC-HELP-FILES/TODO.sec.md` for detailed security status
 
 ---
 
 ## High Priority Tasks
 
-### 1. 🗄️ PostgreSQL Migration (NEXT TASK)
-**Priority:** HIGH - Foundation for Docker deployment
+### 1. 🗄️ PostgreSQL Migration ✅ COMPLETED
+**Status:** ✅ Migrated from SQLite to PostgreSQL (Docker)
 
-**Why:**
-- SQLite limitations for production (no concurrent writes)
-- Practice database migration strategies
-- Preparation for Docker multi-container setup
-- Learn connection string management
+**Completed:**
+- ✅ PostgreSQL 15 running in Docker container
+- ✅ Prisma schema updated (`provider = "postgresql"`)
+- ✅ Connection string updated (localhost:5432)
+- ✅ Migrations applied successfully
+- ✅ All 127 tests passing (DB-agnostic, fully mocked)
+- ✅ Backend connects to PostgreSQL successfully
 
-**What to do:**
-1. **Update Prisma Schema**
-   - Change provider from "sqlite" to "postgresql"
-   - Update connection string in DATABASE_URL
-2. **Setup PostgreSQL**
-   - Install PostgreSQL locally OR use Docker container
-   - Create new database: `createdb todo_dev`
-3. **Run Migration**
-   - `npx prisma migrate dev --name switch_to_postgresql`
-   - `npx prisma generate`
-4. **Verify Tests**
-   - Run `npm test` - all tests should pass (mocked!)
-   - Unit tests are DB-agnostic (fully mocked)
-5. **Manual Testing**
-   - Test API endpoints manually
-   - Verify data persistence
+**Setup:**
+```powershell
+# PostgreSQL running
+docker ps  # Container: todo-postgres
 
-**Benefits:**
-- 🎯 Learn database migration patterns
-- 🔧 Understand connection pooling
-- 📚 Real-world production practices
-- 🐳 Ready for Docker containerization
+# Connection
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/todo_dev"
+
+# Check data
+docker exec -it todo-postgres psql -U postgres -d todo_dev
+npx prisma studio  # GUI at localhost:5555
+```
+
+**Reference:** See `SPEC-HELP-FILES/GUIDE.db.md` for database management
 
 ---
 
-### 2. 🔒 HTTPS Understanding (DEPLOYMENT PRIORITY - Moved)
+### 2. 🔄 GitHub Actions CI Pipeline (NEXT TASK)
+**Priority:** HIGH - Professional practice, immediate value
+
+**Why:**
+- Automated testing on every push/PR
+- Catch breaking changes before merge
+- Foundation for full CI/CD pipeline
+- Senior-level development practice
+
+**What to do:**
+1. **Create workflow file**
+   - `.github/workflows/test.yml`
+2. **Configure unit tests job**
+   - Runs on push/pull_request
+   - Node.js setup
+   - Install dependencies
+   - Run `npm test`
+3. **Add branch protection rules**
+   - Require tests to pass before merge
+4. **Verify workflow**
+   - Push code, watch Actions tab
+   - Green checkmark = tests passed
+
+**Benefits:**
+- 🎯 Prevent broken code from reaching main
+- 🔧 Automated quality gates
+- 📚 Learn CI/CD concepts
+- ✅ Professional portfolio piece
+
+**Reference:** GitHub Actions documentation
+
+---
+
+### 3. 🧪 E2E API Tests with Supertest (NEXT TASK)
+**Priority:** HIGH - Add API testing coverage
+
+**Why:**
+- Test real API flows (not mocked)
+- Validate database integration
+- Test authentication flows end-to-end
+- Foundation for full E2E testing
+
+**What to do:**
+1. **Install Supertest**
+   - `npm install -D supertest @types/supertest`
+2. **Create E2E test structure**
+   - `tests/e2e/auth.e2e.test.ts`
+   - `tests/e2e/todos.e2e.test.ts`
+   - `tests/e2e/setup.ts` (DB cleanup helpers)
+3. **Write E2E tests**
+   - Auth flow: register → login → protected route
+   - Todo CRUD: create → read → update → delete
+   - Error cases: validation, auth failures
+4. **Add to package.json**
+   - `"test:e2e": "jest --config jest.e2e.config.js"`
+5. **Update GitHub Actions**
+   - Add E2E job with PostgreSQL service
+
+**Benefits:**
+- 🎯 Real database testing
+- 🔧 Catch integration issues
+- 📚 Learn E2E testing patterns
+- ✅ Higher confidence in deployments
+
+**Reference:** Supertest documentation
+
+---
+
+### 4. 🐳 Backend Dockerization (AFTER E2E)
+**Priority:** HIGH - Production readiness
+
+**Why:**
+- Complete containerization (backend + database)
+- Team environment consistency
+- Production deployment preparation
+- Learn Docker networking and volumes
+
+**What to do:**
+1. **Create Dockerfile**
+   - Multi-stage build (build → production)
+   - Node.js base image
+   - Copy source, install deps, build
+2. **Create docker-compose.yml**
+   - Backend service (with volume mounts)
+   - PostgreSQL service
+   - Network configuration
+3. **Volume mounts for development**
+   - `./backend:/app` (live code sync)
+   - `npm run dev` (nodemon auto-restart)
+4. **Test setup**
+   - `docker-compose up`
+   - Verify backend + database work
+   - Run tests inside Docker
+5. **Update GitHub Actions**
+   - Build Docker image in CI
+   - Test Docker deployment
+
+**Benefits:**
+- 🎯 Production-ready deployment
+- 🔧 Learn Docker orchestration
+- 📚 Real-world containerization
+- ✅ Dev-prod parity
+
+**Reference:** Docker documentation, docker-compose best practices
+
+---
+
+### 5. 🔒 HTTPS Understanding (DEPLOYMENT PRIORITY - Moved)
 **Priority:** LOW for now - Deferred to deployment phase
 **Status:** Moved to deployment priorities
 
@@ -83,16 +185,15 @@ app.use(helmet({
 
 ---
 
-### 3. 🧪 Unit Tests ✅ COMPLETED
-**Status:** ✅ 106 tests passing, 100% coverage, Express 5 architecture
+### 6. 🧪 Unit Tests ✅ COMPLETED
+**Status:** ✅ 127 tests passing, 100% coverage, Express 5 architecture
 
 **Completed:**
 - ✅ Auth controller tests (47 tests - register, login, forgotPassword, resetPassword)
 - ✅ Todo controller tests (23 tests - CRUD operations)
 - ✅ Auth middleware tests (14 tests - JWT validation)
-- ✅ Security middleware tests (14 tests - input sanitization, XSS prevention)
-- ✅ Request size limiting tests (10 tests - DoS prevention)
-- ✅ ErrorHandler middleware tests (100% coverage)
+- ✅ Security middleware tests (24 tests - input sanitization, XSS prevention, request size limiting)
+- ✅ ErrorHandler middleware tests (19 tests - 100% coverage)
 
 **Test Structure:**
 ```
@@ -116,7 +217,7 @@ backend/tests/
 
 ---
 
-### 4. 📧 Password Reset Feature ✅ COMPLETED
+### 7. 📧 Password Reset Feature ✅ COMPLETED
 **Status:** ✅ Implemented using TDD approach (RED → GREEN → REFACTOR)
 
 **Completed Features:**
