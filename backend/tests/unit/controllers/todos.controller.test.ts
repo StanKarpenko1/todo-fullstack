@@ -73,7 +73,7 @@ describe('Todos Controller - Unit Tests', () => {
         // ASSERT
         expect(mockPrismaTodo.findMany).toHaveBeenCalledWith({
           where: { userId: req.user!.id },
-          orderBy: { createdAt: 'asc' }, // { createdAt: 'desc' },
+          orderBy: { createdAt: 'desc' },
         });
         expect(res.json).toHaveBeenCalledWith({
           message: 'Todos retrieved successfully',
