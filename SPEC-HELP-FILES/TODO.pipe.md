@@ -1,5 +1,19 @@
 # CI/CD Pipeline Setup Guide
 
+## Status
+
+**Current:** ✅ GitHub Actions (unit tests) + Husky (pre-commit hooks)
+
+**TODO - Next Learning:**
+- 📋 **Concourse Pipeline** - Visual pipeline representation with dependency graphs
+  - Alternative to GitHub Actions
+  - Interactive UI showing pipeline flow
+  - Real-time build/test visualization
+  - Better for understanding complex CI/CD workflows
+  - Reference: https://concourse-ci.org/
+
+---
+
 ## GitHub Actions - Unit Tests Pipeline
 
 ### Goal
@@ -501,8 +515,308 @@ deploy:
 
 ---
 
+## Pre-Commit Hooks (Husky + lint-staged)
+
+### What Are Pre-Commit Hooks?
+
+**Git hooks = Scripts that run automatically before commits**
+
+**Purpose:** Catch issues locally before pushing to GitHub.
+
+---
+
+### Two-Layer Quality Gates
+
+```
+Layer 1: Local (Husky)        ← Fast feedback (2 seconds)
+    ↓
+Layer 2: Remote (GitHub Actions)  ← Comprehensive (20+ seconds)
+```
+
+---
+
+### Setup Husky + lint-staged
+
+#### 1. Install Dependencies
+
+```powershell
+# From project root
+npm install -D husky lint-staged
+
+# Initialize Husky
+npx husky init
+```
+
+---
+
+#### 2. Configure Pre-Commit Hook
+
+**File:** `.husky/pre-commit`
+
+```bash
+cd backend && npx lint-staged
+```
+
+**What this does:**
+- Runs before every `git commit`
+- Executes lint-staged in backend folder
+- Blocks commit if checks fail
+
+---
+
+#### 3. Configure lint-staged
+
+**Add to `backend/package.json`:**
+
+```json
+{
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  }
+}
+```
+
+**What this checks:**
+- **ESLint:** Code quality, syntax errors, bad patterns
+- **Prettier:** Code formatting (spacing, indentation)
+
+---
+
+### What ESLint Catches
+
+**Bugs:**
+```typescript
+const user = getUser();  // ❌ Unused variable
+return true;
+console.log('test');     // ❌ Unreachable code
+```
+
+**Bad Patterns:**
+```typescript
+if (x = 5)  // ❌ Assignment instead of comparison
+console.log(x);  // ❌ Variable used before declaration
+const x = 5;
+```
+
+**Style Issues:**
+```typescript
+const x = 5  // ❌ Missing semicolon
+const name = "test"  // ❌ Wrong quotes (if configured for single quotes)
+```
+
+---
+
+### What Prettier Does
+
+**Auto-formats code:**
+
+**Before:**
+```typescript
+function test(  x,y   ){
+return x+y
+}
+```
+
+**After:**
+```typescript
+function test(x, y) {
+  return x + y;
+}
+```
+
+---
+
+### ESLint vs Prettier
+
+| Tool | Purpose | Example |
+|------|---------|---------|
+| **ESLint** | Find bugs, enforce best practices | Unused variables, missing returns |
+| **Prettier** | Format code consistently | Indentation, spacing, line breaks |
+
+**ESLint:** "This code is wrong"
+**Prettier:** "This code is ugly"
+
+---
+
+### Pre-Commit Flow
+
+```
+git add .
+git commit -m "message"
+    ↓
+Husky intercepts
+    ↓
+Run lint-staged
+    ↓
+Check staged .ts files:
+  - ESLint --fix (auto-fix issues)
+  - Prettier --write (auto-format)
+    ↓
+All pass? → Commit proceeds ✅
+Issues? → Commit blocked ❌
+```
+
+---
+
+### Test Pre-Commit Hook
+
+#### Test 1: Auto-Fix
+
+```typescript
+// backend/src/server.ts
+const x=5  // Missing semicolon, bad spacing
+
+// Stage and commit
+git add backend/src/server.ts
+git commit -m "Test husky"
+
+// Husky auto-fixes:
+const x = 5;  // ✅ Fixed automatically
+```
+
+---
+
+#### Test 2: Block Commit
+
+```typescript
+// Intentional error
+const unused = 5;  // ESLint error: unused variable
+
+git commit -m "Test"
+// ❌ Commit blocked
+// Error: 'unused' is assigned but never used
+```
+
+---
+
+### Optional: Add Tests to Pre-Commit
+
+**Current config (fast):**
+```json
+"lint-staged": {
+  "*.ts": [
+    "eslint --fix",
+    "prettier --write"
+  ]
+}
+```
+
+**With tests (slower, more thorough):**
+```json
+"lint-staged": {
+  "*.ts": [
+    "eslint --fix",
+    "prettier --write",
+    "jest --bail --findRelatedTests"
+  ]
+}
+```
+
+**Trade-off:**
+- ✅ Catches test failures before push
+- ❌ Slower commits (~20 seconds vs 2 seconds)
+
+**Recommendation:** Keep tests in GitHub Actions only (fast local workflow).
+
+---
+
+### Bypass Pre-Commit Hook (Emergency)
+
+```powershell
+# Skip hooks (not recommended)
+git commit --no-verify -m "Emergency fix"
+```
+
+**Use only when:**
+- CI is down
+- Emergency hotfix
+- Hook is broken
+
+---
+
+### Two-Layer Quality Strategy
+
+#### Layer 1: Husky (Local - Fast)
+
+**Runs:** Before commit
+**Checks:** ESLint + Prettier
+**Time:** ~2 seconds
+**Catches:** Syntax errors, formatting issues
+
+**Purpose:** Fast feedback loop during development
+
+---
+
+#### Layer 2: GitHub Actions (Remote - Comprehensive)
+
+**Runs:** After push
+**Checks:** Full test suite (127 tests)
+**Time:** ~1-2 minutes
+**Catches:** Test failures, integration issues
+
+**Purpose:** Safety net before merge/deploy
+
+---
+
+### Why Not Run Tests Locally?
+
+**Fast commits = Better developer experience**
+
+```
+With tests in Husky:
+git commit → Wait 20 seconds → Success
+
+Without tests:
+git commit → 2 seconds → Success
+git push → GitHub Actions runs tests (in background)
+```
+
+**Most teams:** Fast local checks (ESLint/Prettier), comprehensive remote checks (tests in CI).
+
+---
+
+### Troubleshooting Husky
+
+#### Hook Not Running
+
+```powershell
+# Check hook is executable (Git Bash)
+ls -la .husky/pre-commit
+
+# Should show executable permission
+# If not, make executable:
+chmod +x .husky/pre-commit
+```
+
+#### lint-staged Not Found
+
+```powershell
+# Ensure installed
+cd backend
+npm install -D lint-staged
+
+# Check package.json has lint-staged config
+```
+
+#### ESLint Errors
+
+```powershell
+# Run ESLint manually
+cd backend
+npm run lint
+
+# Auto-fix issues
+npm run lint:fix
+```
+
+---
+
 ## Success Criteria
 
+### GitHub Actions
 - [ ] Workflow file created (`.github/workflows/test.yml`)
 - [ ] Workflow runs on push to main
 - [ ] Workflow runs on pull requests
@@ -511,6 +825,15 @@ deploy:
 - [ ] Workflow shows red X on failure
 - [ ] (Optional) Branch protection enabled
 - [ ] (Optional) Status badge added to README
+
+### Husky + lint-staged
+- [ ] Husky installed and initialized
+- [ ] Pre-commit hook created (`.husky/pre-commit`)
+- [ ] lint-staged installed
+- [ ] lint-staged config in `backend/package.json`
+- [ ] ESLint checks on staged files
+- [ ] Prettier formats on staged files
+- [ ] Commit blocked when ESLint fails
 
 ---
 

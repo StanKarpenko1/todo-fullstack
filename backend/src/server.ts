@@ -1,4 +1,4 @@
-import express from 'express'; 
+import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -12,44 +12,49 @@ import todoRoutes from './routers/todos';
 import { sanitizeInput, limitRequestSize } from './middleware/security';
 import { errorHandler } from './middleware/errorHandler';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables (silent in test mode)
+dotenv.config({ debug: false });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Security middleware
-app.use(helmet({
-  // Disable deprecated X-XSS-Protection header
-  xssFilter: false,
+app.use(
+  helmet({
+    // Disable deprecated X-XSS-Protection header
+    xssFilter: false,
 
-  // Configure Content Security Policy
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'"],
-      fontSrc: ["'self'"],
-      objectSrc: ["'none'"],
-      baseUri: ["'self'"],
-      formAction: ["'self'"]
-    }
-  },
+    // Configure Content Security Policy
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:', 'https:'],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+      },
+    },
 
-  // Configure HSTS for production
-  hsts: process.env.NODE_ENV === 'production' ? {
-    maxAge: 31536000,
-    includeSubDomains: true,
-    preload: true
-  } : false,
+    // Configure HSTS for production
+    hsts:
+      process.env.NODE_ENV === 'production'
+        ? {
+            maxAge: 31536000,
+            includeSubDomains: true,
+            preload: true,
+          }
+        : false,
 
-  // Configure referrer policy
-  referrerPolicy: {
-    policy: "strict-origin-when-cross-origin"
-  }
-}));
+    // Configure referrer policy
+    referrerPolicy: {
+      policy: 'strict-origin-when-cross-origin',
+    },
+  })
+);
 
 app.use(cors());
 app.use(limitRequestSize);
@@ -70,7 +75,12 @@ app.use(sanitizeInput);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.status(200).json({ message: 'Server is running!', timestamp: new Date().toISOString() });
+  res
+    .status(200)
+    .json({
+      message: 'Server is running!',
+      timestamp: new Date().toISOString(),
+    });
 });
 
 // API routes
@@ -87,6 +97,8 @@ if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Health check: http://localhost:${PORT}/health`);
-    console.log(`Auth endpoints: http://localhost:${PORT}/api/auth/register & /api/auth/login`);
+    console.log(
+      `Auth endpoints: http://localhost:${PORT}/api/auth/register & /api/auth/login`
+    );
   });
 }
