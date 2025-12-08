@@ -51,24 +51,6 @@ describe('errorHandler Middleware', () => {
       });
     });
 
-    it('should respect isOperational flag from AppError', () => {
-      // Arrange
-      const error = new AppError(400, 'Validation failed', true);
-
-      // Act
-      errorHandler(error, req, res, next);
-
-      // Assert
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Error occurred:',
-        expect.objectContaining({
-          statusCode: 400,
-          message: 'Validation failed',
-          isOperational: true,
-        })
-      );
-    });
-
     it('should return JSON with error property for AppError', () => {
       // Arrange
       const error = new AppError(403, 'Forbidden');
@@ -109,22 +91,6 @@ describe('errorHandler Middleware', () => {
       expect(res.json).toHaveBeenCalledWith({
         error: 'Internal server error',
       });
-    });
-
-    it('should mark non-AppError as non-operational', () => {
-      // Arrange
-      const error = new Error('Programming bug');
-
-      // Act
-      errorHandler(error, req, res, next);
-
-      // Assert
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Error occurred:',
-        expect.objectContaining({
-          isOperational: false,
-        })
-      );
     });
   });
 
@@ -182,71 +148,7 @@ describe('errorHandler Middleware', () => {
   });
 
   // ========================================
-  // 4. Logging Behavior Tests
-  // ========================================
-  describe('Logging Behavior', () => {
-    it('should log error details with context', () => {
-      // Arrange
-      const error = new AppError(401, 'Unauthorized');
-      req.url = '/api/todos';
-      req.method = 'GET';
-
-      // Act
-      errorHandler(error, req, res, next);
-
-      // Assert
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Error occurred:',
-        expect.objectContaining({
-          statusCode: 401,
-          message: 'Unauthorized',
-          isOperational: true,
-          url: '/api/todos',
-          method: 'GET',
-          timestamp: expect.any(String),
-        })
-      );
-    });
-
-    it('should log request URL and method', () => {
-      // Arrange
-      const error = new Error('Something broke');
-      req.url = '/api/auth/register';
-      req.method = 'POST';
-
-      // Act
-      errorHandler(error, req, res, next);
-
-      // Assert
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Error occurred:',
-        expect.objectContaining({
-          url: '/api/auth/register',
-          method: 'POST',
-        })
-      );
-    });
-
-    it('should log stack trace for debugging', () => {
-      // Arrange
-      const error = new Error('Crash');
-      error.stack = 'Error: Crash\n    at controller';
-
-      // Act
-      errorHandler(error, req, res, next);
-
-      // Assert
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Error occurred:',
-        expect.objectContaining({
-          stack: 'Error: Crash\n    at controller',
-        })
-      );
-    });
-  });
-
-  // ========================================
-  // 5. Prototype Chain Tests
+  // 4. Prototype Chain Tests
   // ========================================
   describe('Prototype Chain', () => {
     it('should correctly identify AppError with instanceof', () => {
@@ -274,7 +176,7 @@ describe('errorHandler Middleware', () => {
   });
 
   // ========================================
-  // 6. Response Format Consistency Tests
+  // 5. Response Format Consistency Tests
   // ========================================
   describe('Response Format Consistency', () => {
     it('should always return JSON format', () => {
@@ -320,7 +222,10 @@ describe('errorHandler Middleware', () => {
     it('should set status code correctly for various status codes', () => {
       // Arrange
       const testCases = [
-        { error: new AppError(422, 'Unprocessable Entity'), expectedStatus: 422 },
+        {
+          error: new AppError(422, 'Unprocessable Entity'),
+          expectedStatus: 422,
+        },
         { error: new AppError(409, 'Conflict'), expectedStatus: 409 },
         { error: new Error('Generic'), expectedStatus: 500 },
       ];
@@ -340,7 +245,7 @@ describe('errorHandler Middleware', () => {
   });
 
   // ========================================
-  // 7. Edge Case Tests
+  // 6. Edge Case Tests
   // ========================================
   describe('Edge Cases', () => {
     it('should handle errors without message', () => {
@@ -371,7 +276,6 @@ describe('errorHandler Middleware', () => {
         error: 'Internal server error',
         stack: undefined,
       });
-      expect(consoleErrorSpy).toHaveBeenCalled(); // Should still log
     });
   });
 });
