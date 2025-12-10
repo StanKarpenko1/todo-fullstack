@@ -109,7 +109,7 @@ These tests should be part of your regular unit/integration test suite and run a
 
 ##### Functional Security Tests:
 ```javascript
-// ✅ Run with npm test - these test your CODE
+// Run with npm test - these test your CODE
 describe('Security Functions', () => {
   it('should sanitize XSS inputs', () => {
     // Tests that DOMPurify middleware works
@@ -135,7 +135,7 @@ describe('Security Functions', () => {
 
 ##### Examples from Our Todo App:
 ```javascript
-// backend/tests/security.test.ts - ✅ Runs with npm test
+// backend/tests/security.test.ts - Runs with npm test
 - XSS sanitization tests
 - SQL injection prevention tests
 - JWT validation tests
@@ -149,7 +149,7 @@ These tests are more comprehensive but slower, and often test **infrastructure**
 
 ##### Infrastructure Security Tests:
 ```bash
-# 🔄 Run weekly/monthly - these test your DEPLOYMENT
+# Run weekly/monthly - these test your DEPLOYMENT
 npm audit                    # Dependency vulnerabilities
 docker run owasp/zap         # DAST scanning
 nmap localhost               # Port scanning
@@ -173,12 +173,12 @@ testssl.sh domain.com        # TLS configuration
 #### Security Testing Pyramid
 
 ```
-                    🔺
-                   /   \
-              Manual/    Pen Testing
-             /    \      (Quarterly)
+                    /\
+                   /  \
+              Manual/  \ Pen Testing
+             /    \    \ (Quarterly)
         DAST /      \
-           /  SAST   \   (Weekly/Monthly)
+           /  SAST   \  (Weekly/Monthly)
           /          \
     Unit Tests        Integration Tests
    (Continuous)       (Continuous)
@@ -187,7 +187,7 @@ testssl.sh domain.com        # TLS configuration
 
 ##### Layer Breakdown:
 
-**🟢 Bottom Layer - Unit/Integration Tests (Continuous)**
+**Bottom Layer - Unit/Integration Tests (Continuous)**
 ```javascript
 // Fast, focused, run every commit
 it('should prevent XSS in user input', () => {
@@ -196,7 +196,7 @@ it('should prevent XSS in user input', () => {
 });
 ```
 
-**🟡 Middle Layer - SAST/DAST (Periodic)**
+**Middle Layer - SAST/DAST (Periodic)**
 ```bash
 # Automated but slower, run weekly
 npm audit                    # Static analysis
@@ -204,7 +204,7 @@ owasp-zap-baseline.py       # Dynamic analysis
 snyk test                   # Dependency analysis
 ```
 
-**🔴 Top Layer - Manual Testing (Scheduled)**
+**Top Layer - Manual Testing (Scheduled)**
 ```bash
 # Human expertise, run monthly/quarterly
 - Penetration testing
@@ -222,7 +222,7 @@ name: Security Pipeline
 on: [push, pull_request]
 
 jobs:
-  # ✅ Continuous - Every commit
+  # Continuous - Every commit
   unit-security-tests:
     runs-on: ubuntu-latest
     steps:
@@ -230,7 +230,7 @@ jobs:
       - name: Run security unit tests
         run: npm test -- --testNamePattern="Security"
 
-  # ✅ Continuous - Every commit
+  # Continuous - Every commit
   dependency-check:
     runs-on: ubuntu-latest
     steps:
@@ -238,7 +238,7 @@ jobs:
       - name: Run npm audit
         run: npm audit --audit-level=moderate
 
-  # 🔄 Periodic - Only on main branch
+  # Periodic - Only on main branch
   dast-scan:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
@@ -248,7 +248,7 @@ jobs:
       - name: Run OWASP ZAP scan
         run: docker run owasp/zap2docker-stable zap-baseline.py -t http://localhost:3000
 
-  # 🔄 Scheduled - Weekly
+  # Scheduled - Weekly
   full-security-scan:
     runs-on: ubuntu-latest
     if: github.event_name == 'schedule'
@@ -274,35 +274,35 @@ jobs:
 
 #### Common Anti-Patterns to Avoid
 
-##### ❌ Wrong: Running Slow Tests Continuously
+##### [WRONG]: Running Slow Tests Continuously
 ```yaml
 # This will make developers avoid running tests
 jobs:
   every-commit:
     steps:
-      - name: Full pen test on every commit  # ❌ Too slow
+      - name: Full pen test on every commit  # [WRONG] Too slow
         run: full-security-audit.sh
 ```
 
-##### ❌ Wrong: Only Manual Security Testing
+##### [WRONG]: Only Manual Security Testing
 ```javascript
 // No automated security tests
 // Security bugs slip through until manual audit
 ```
 
-##### ✅ Right: Balanced Approach
+##### [RIGHT]: Balanced Approach
 ```yaml
 # Fast feedback loop + comprehensive coverage
 jobs:
   fast-security:
     steps:
-      - name: Security unit tests      # ✅ 30 seconds
-      - name: Dependency check        # ✅ 1 minute
+      - name: Security unit tests      # 30 seconds
+      - name: Dependency check        # 1 minute
 
   comprehensive-security:
     if: scheduled
     steps:
-      - name: Full DAST scan          # ✅ 30 minutes, but not blocking
+      - name: Full DAST scan          # 30 minutes, but not blocking
 ```
 
 #### Team Responsibilities
@@ -499,8 +499,8 @@ const startHttpsServer = () => {
       const httpsPort = process.env.HTTPS_PORT || 5443;
 
       httpsServer.listen(httpsPort, () => {
-        console.log(`🔒 HTTPS Server running on https://localhost:${httpsPort}`);
-        console.log(`🔐 Health check: https://localhost:${httpsPort}/health`);
+        console.log(`[HTTPS] Server running on https://localhost:${httpsPort}`);
+        console.log(`[HTTPS] Health check: https://localhost:${httpsPort}/health`);
       });
 
       return httpsServer;
@@ -543,7 +543,7 @@ const createSecureServer = (app: express.Application) => {
 
   // Start HTTP server
   http.createServer(httpApp).listen(httpPort, () => {
-    console.log(`🌐 HTTP Server running on http://localhost:${httpPort}`);
+    console.log(`[HTTP] Server running on http://localhost:${httpPort}`);
   });
 
   // Start HTTPS server if certificates exist
@@ -554,7 +554,7 @@ const createSecureServer = (app: express.Application) => {
     };
 
     https.createServer(options, app).listen(httpsPort, () => {
-      console.log(`🔒 HTTPS Server running on https://localhost:${httpsPort}`);
+      console.log(`[HTTPS] Server running on https://localhost:${httpsPort}`);
     });
   } catch (error) {
     console.warn('HTTPS certificates not found');
@@ -714,18 +714,18 @@ sudo certbot --nginx -d yourdomain.com
 
 ```javascript
 // Problem: HTTP resources on HTTPS pages
-<script src="http://example.com/script.js"></script> // ❌
+<script src="http://example.com/script.js"></script> // [WRONG]
 
 // Solution: Use HTTPS or protocol-relative URLs
-<script src="https://example.com/script.js"></script> // ✅
-<script src="//example.com/script.js"></script> // ✅ (inherits protocol)
+<script src="https://example.com/script.js"></script> // [RIGHT]
+<script src="//example.com/script.js"></script> // [RIGHT] (inherits protocol)
 ```
 
 ##### Certificate Trust Issues:
 
 ```javascript
 // Development workaround for self-signed certificates
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'; // ❌ Never in production!
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'; // [DANGER] Never in production!
 
 // Better: Use proper development certificates with mkcert
 // Or configure your test environment to trust the CA

@@ -2,10 +2,10 @@
 
 ## Status
 
-**Current:** ✅ GitHub Actions (unit tests) + Husky (pre-commit hooks)
+**Current:** [DONE] GitHub Actions (unit tests) + Husky (pre-commit hooks)
 
 **TODO - Next Learning:**
-- 📋 **Concourse Pipeline** - Visual pipeline representation with dependency graphs
+- [TODO] **Concourse Pipeline** - Visual pipeline representation with dependency graphs
   - Alternative to GitHub Actions
   - Interactive UI showing pipeline flow
   - Real-time build/test visualization
@@ -589,22 +589,22 @@ cd backend && npx lint-staged
 
 **Bugs:**
 ```typescript
-const user = getUser();  // ❌ Unused variable
+const user = getUser();  // [ERROR] Unused variable
 return true;
-console.log('test');     // ❌ Unreachable code
+console.log('test');     // [ERROR] Unreachable code
 ```
 
 **Bad Patterns:**
 ```typescript
-if (x = 5)  // ❌ Assignment instead of comparison
-console.log(x);  // ❌ Variable used before declaration
+if (x = 5)  // [ERROR] Assignment instead of comparison
+console.log(x);  // [ERROR] Variable used before declaration
 const x = 5;
 ```
 
 **Style Issues:**
 ```typescript
-const x = 5  // ❌ Missing semicolon
-const name = "test"  // ❌ Wrong quotes (if configured for single quotes)
+const x = 5  // [ERROR] Missing semicolon
+const name = "test"  // [ERROR] Wrong quotes (if configured for single quotes)
 ```
 
 ---
@@ -655,8 +655,8 @@ Check staged .ts files:
   - ESLint --fix (auto-fix issues)
   - Prettier --write (auto-format)
     ↓
-All pass? → Commit proceeds ✅
-Issues? → Commit blocked ❌
+All pass? → Commit proceeds [SUCCESS]
+Issues? → Commit blocked [BLOCKED]
 ```
 
 ---
@@ -674,7 +674,7 @@ git add backend/src/server.ts
 git commit -m "Test husky"
 
 // Husky auto-fixes:
-const x = 5;  // ✅ Fixed automatically
+const x = 5;  // [FIXED] Fixed automatically
 ```
 
 ---
@@ -686,7 +686,7 @@ const x = 5;  // ✅ Fixed automatically
 const unused = 5;  // ESLint error: unused variable
 
 git commit -m "Test"
-// ❌ Commit blocked
+// [BLOCKED] Commit blocked
 // Error: 'unused' is assigned but never used
 ```
 
@@ -716,8 +716,8 @@ git commit -m "Test"
 ```
 
 **Trade-off:**
-- ✅ Catches test failures before push
-- ❌ Slower commits (~20 seconds vs 2 seconds)
+- [PRO] Catches test failures before push
+- [CON] Slower commits (~20 seconds vs 2 seconds)
 
 **Recommendation:** Keep tests in GitHub Actions only (fast local workflow).
 

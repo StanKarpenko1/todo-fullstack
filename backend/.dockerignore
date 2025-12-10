@@ -1,0 +1,60 @@
+# Dependencies
+node_modules
+npm-debug.log
+
+# Development files
+*.log
+*.swp
+*.swo
+*~
+
+# Tests
+tests
+*.test.ts
+*.spec.ts
+coverage
+.nyc_output
+
+# Build artifacts
+dist
+build
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Git
+.git
+.gitignore
+.github
+
+# IDE
+.vscode
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
+*.md
+!prisma/*.md
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Misc
+.prettierrc
+.eslintrc*
+tsconfig.json
+jest.config.js
+jest.e2e.config.js
+nodemon.json

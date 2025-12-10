@@ -18,16 +18,16 @@
 
 ## High Priority Tasks
 
-### 1. 🗄️ PostgreSQL Migration ✅ COMPLETED
-**Status:** ✅ Migrated from SQLite to PostgreSQL (Docker)
+### 1. [DONE] PostgreSQL Migration
+**Status:** [DONE] Migrated from SQLite to PostgreSQL (Docker)
 
 **Completed:**
-- ✅ PostgreSQL 15 running in Docker container
-- ✅ Prisma schema updated (`provider = "postgresql"`)
-- ✅ Connection string updated (localhost:5432)
-- ✅ Migrations applied successfully
-- ✅ All 127 tests passing (DB-agnostic, fully mocked)
-- ✅ Backend connects to PostgreSQL successfully
+- [DONE] PostgreSQL 15 running in Docker container
+- [DONE] Prisma schema updated (`provider = "postgresql"`)
+- [DONE] Connection string updated (localhost:5432)
+- [DONE] Migrations applied successfully
+- [DONE] All 127 tests passing (DB-agnostic, fully mocked)
+- [DONE] Backend connects to PostgreSQL successfully
 
 **Setup:**
 ```powershell
@@ -46,7 +46,7 @@ npx prisma studio  # GUI at localhost:5555
 
 ---
 
-### 2. 🔄 GitHub Actions CI Pipeline (NEXT TASK)
+### 2. [IN PROGRESS] GitHub Actions CI Pipeline (NEXT TASK)
 **Priority:** HIGH - Professional practice, immediate value
 
 **Why:**
@@ -70,16 +70,16 @@ npx prisma studio  # GUI at localhost:5555
    - Green checkmark = tests passed
 
 **Benefits:**
-- 🎯 Prevent broken code from reaching main
-- 🔧 Automated quality gates
-- 📚 Learn CI/CD concepts
-- ✅ Professional portfolio piece
+- Prevent broken code from reaching main
+- Automated quality gates
+- Learn CI/CD concepts
+- Professional portfolio piece
 
 **Reference:** GitHub Actions documentation
 
 ---
 
-### 3. 🧪 E2E API Tests with Supertest (NEXT TASK)
+### 3. [TODO] E2E API Tests with Supertest (NEXT TASK)
 **Priority:** HIGH - Add API testing coverage
 
 **Why:**
@@ -105,16 +105,16 @@ npx prisma studio  # GUI at localhost:5555
    - Add E2E job with PostgreSQL service
 
 **Benefits:**
-- 🎯 Real database testing
-- 🔧 Catch integration issues
-- 📚 Learn E2E testing patterns
-- ✅ Higher confidence in deployments
+- Real database testing
+- Catch integration issues
+- Learn E2E testing patterns
+- Higher confidence in deployments
 
 **Reference:** Supertest documentation
 
 ---
 
-### 4. 🐳 Backend Dockerization (AFTER E2E)
+### 4. [TODO] Backend Dockerization (AFTER E2E)
 **Priority:** HIGH - Production readiness
 
 **Why:**
@@ -144,24 +144,24 @@ npx prisma studio  # GUI at localhost:5555
    - Test Docker deployment
 
 **Benefits:**
-- 🎯 Production-ready deployment
-- 🔧 Learn Docker orchestration
-- 📚 Real-world containerization
-- ✅ Dev-prod parity
+- Production-ready deployment
+- Learn Docker orchestration
+- Real-world containerization
+- Dev-prod parity
 
 **Reference:** Docker documentation, docker-compose best practices
 
 ---
 
-### 5. 🔒 HTTPS Understanding (DEPLOYMENT PRIORITY - Moved)
+### 5. HTTPS Understanding (DEPLOYMENT PRIORITY - Moved)
 **Priority:** LOW for now - Deferred to deployment phase
 **Status:** Moved to deployment priorities
 
 **Decision:**
-- ❌ **Not implementing locally** - Unnecessary complexity for development
-- ✅ **Already production-ready** - Helmet configured for production HTTPS
-- ✅ **Platform handles it** - Vercel/Railway provide automatic HTTPS
-- 🎓 **Learn during deployment** - Better timing when actually needed
+- **Not implementing locally** - Unnecessary complexity for development
+- **Already production-ready** - Helmet configured for production HTTPS
+- **Platform handles it** - Vercel/Railway provide automatic HTTPS
+- **Learn during deployment** - Better timing when actually needed
 
 **What you already have:**
 ```javascript
@@ -185,50 +185,50 @@ app.use(helmet({
 
 ---
 
-### 6. 🧪 Unit Tests ✅ COMPLETED
-**Status:** ✅ 127 tests passing, 100% coverage, Express 5 architecture
+### 6. [DONE] Unit Tests
+**Status:** [DONE] 127 tests passing, 100% coverage, Express 5 architecture
 
 **Completed:**
-- ✅ Auth controller tests (47 tests - register, login, forgotPassword, resetPassword)
-- ✅ Todo controller tests (23 tests - CRUD operations)
-- ✅ Auth middleware tests (14 tests - JWT validation)
-- ✅ Security middleware tests (24 tests - input sanitization, XSS prevention, request size limiting)
-- ✅ ErrorHandler middleware tests (19 tests - 100% coverage)
+- [DONE] Auth controller tests (47 tests - register, login, forgotPassword, resetPassword)
+- [DONE] Todo controller tests (23 tests - CRUD operations)
+- [DONE] Auth middleware tests (14 tests - JWT validation)
+- [DONE] Security middleware tests (24 tests - input sanitization, XSS prevention, request size limiting)
+- [DONE] ErrorHandler middleware tests (19 tests - 100% coverage)
 
 **Test Structure:**
 ```
 backend/tests/
   unit/
     controllers/
-      auth.controller.test.ts    ✅ 47 tests
-      todos.controller.test.ts   ✅ 23 tests (not shown in original - added later)
+      auth.controller.test.ts    [DONE] 47 tests
+      todos.controller.test.ts   [DONE] 23 tests (not shown in original - added later)
     middleware/
-      auth.test.ts               ✅ 14 tests
-      security.test.ts           ✅ 24 tests
-      errorHandler.test.ts       ✅ (coverage complete)
-    setup.ts                     ✅ Mock utilities
+      auth.test.ts               [DONE] 14 tests
+      security.test.ts           [DONE] 24 tests
+      errorHandler.test.ts       [DONE] (coverage complete)
+    setup.ts                     [DONE] Mock utilities
 ```
 
 **Benefits Achieved:**
-- ✅ Fast test execution (~12 seconds for 106 tests)
-- ✅ No database dependencies
-- ✅ True unit test isolation
-- ✅ TDD workflow practiced (password reset feature)
+- Fast test execution (~12 seconds for 106 tests)
+- No database dependencies
+- True unit test isolation
+- TDD workflow practiced (password reset feature)
 
 ---
 
-### 7. 📧 Password Reset Feature ✅ COMPLETED
-**Status:** ✅ Implemented using TDD approach (RED → GREEN → REFACTOR)
+### 7. [DONE] Password Reset Feature
+**Status:** [DONE] Implemented using TDD approach (RED → GREEN → REFACTOR)
 
 **Completed Features:**
-- ✅ `POST /api/auth/forgot-password` - Generate reset token
-- ✅ `POST /api/auth/reset-password` - Reset password with token
-- ✅ Token-based system using crypto.randomBytes(32)
-- ✅ Token hashing with bcrypt (10 rounds)
-- ✅ 1-hour token expiry
-- ✅ Rate limiting (5 requests per 15 minutes on forgot-password)
-- ✅ User enumeration prevention (generic messages)
-- ✅ 21 unit tests for password reset flow
+- [DONE] `POST /api/auth/forgot-password` - Generate reset token
+- [DONE] `POST /api/auth/reset-password` - Reset password with token
+- [DONE] Token-based system using crypto.randomBytes(32)
+- [DONE] Token hashing with bcrypt (10 rounds)
+- [DONE] 1-hour token expiry
+- [DONE] Rate limiting (5 requests per 15 minutes on forgot-password)
+- [DONE] User enumeration prevention (generic messages)
+- [DONE] 21 unit tests for password reset flow
 
 **Key Security Patterns Implemented:**
 - Token generation: `crypto.randomBytes(32).toString('hex')`
@@ -243,13 +243,13 @@ backend/tests/
 
 ## Future Enhancements
 
-### 5. 🐳 Docker Multi-Container Setup (AFTER POSTGRESQL)
+### 5. [TODO] Docker Multi-Container Setup (AFTER POSTGRESQL)
 **Pattern:** SQLite (prototype) → PostgreSQL (production) → Docker
 
 **Phase 1: Keep SQLite (Current)**
-- ✅ Fast prototyping with zero setup
-- ✅ Focus on features, not infrastructure
-- ✅ Learn Prisma fundamentals
+- [DONE] Fast prototyping with zero setup
+- [DONE] Focus on features, not infrastructure
+- [DONE] Learn Prisma fundamentals
 
 **Phase 2: Migrate to PostgreSQL (Before Docker)**
 - Change Prisma provider from "sqlite" to "postgresql"
@@ -263,10 +263,10 @@ backend/tests/
 - Database container (PostgreSQL)
 
 **Benefits:**
-- 🎯 Learn database migration strategies
-- 🐳 Practice Docker multi-container orchestration
-- 🌐 Real-world production patterns
-- 📚 Understand database networking
+- Learn database migration strategies
+- Practice Docker multi-container orchestration
+- Real-world production patterns
+- Understand database networking
 
 **Why This Order:**
 - SQLite perfect for fast development
@@ -302,7 +302,7 @@ backend/tests/
 
 ## Session Wrap-up
 
-### ✅ **Completed This Session (2025-11-04):**
+### [DONE] **Completed This Session (2025-11-04):**
 1. **Analyzed project structure** - Full-stack Todo app with MVC pattern
 2. **Cleaned up tests:**
    - Deleted `auth.test.ts`, `todos.test.ts`, `security.test.ts` (integration tests)
@@ -313,7 +313,7 @@ backend/tests/
    - Updated `TODO.md` with clear next steps
    - Planned SQLite → PostgreSQL → Docker migration path
 
-### ✅ **Completed This Session (2025-11-12) - Unit Testing Implementation:**
+### [DONE] **Completed This Session (2025-11-12) - Unit Testing Implementation:**
 1. **Unit tests fully implemented** - 49 tests passing in ~15 seconds
 2. **Test coverage achieved:**
    - `auth.controller.test.ts` - 26 tests (register & login)
@@ -325,7 +325,7 @@ backend/tests/
    - Test organization with describe blocks
    - Mock utilities in setup.ts
 
-### ✅ **Completed This Session (2025-11-17) - Express 5 Refactor & Test Fixes:**
+### [DONE] **Completed This Session (2025-11-17) - Express 5 Refactor & Test Fixes:**
 1. **Discovered unnecessary asyncHandler wrapper** - Already on Express 5.1.0!
 2. **Removed asyncHandler pattern:**
    - Deleted `src/utils/asyncHandler.ts` (redundant with Express 5)
@@ -342,7 +342,7 @@ backend/tests/
    - Reference project comparison (why they don't use asyncHandler)
 5. **All 49 tests passing** - Clean refactor, no functionality broken
 
-### ✅ **Completed This Session (2025-11-19) - ErrorHandler Middleware Unit Tests:**
+### [DONE] **Completed This Session (2025-11-19) - ErrorHandler Middleware Unit Tests:**
 1. **Created comprehensive errorHandler middleware tests** - 19 new tests, 100% coverage
 2. **Advanced mocking patterns mastered:**
    - Console spying (jest.spyOn with mockRestore)
@@ -366,18 +366,18 @@ backend/tests/
    - Understanding when to test errorHandler separately vs in controllers
 5. **All 68 tests passing** (~8 seconds) - Complete unit test coverage for controllers + middleware
 
-### 📂 **Current Test Status:**
+###  **Current Test Status:**
 ```
 backend/tests/
   ├─ unit/
-  │   ├─ setup.ts                              ✅ Mock factories & utilities
+  │   ├─ setup.ts                              [DONE] Mock factories & utilities
   │   ├─ controllers/
-  │   │   ├─ auth.controller.test.ts           ✅ 26 tests passing
-  │   │   └─ todos.controller.test.ts          ✅ 23 tests passing
+  │   │   ├─ auth.controller.test.ts           [DONE] 26 tests passing
+  │   │   └─ todos.controller.test.ts          [DONE] 23 tests passing
   │   └─ middleware/
-  │       └─ errorHandler.test.ts              ✅ 19 tests passing
-  ├─ tsconfig.json                             ✅ Test config
-  └─ README.md                                 ✅ Testing documentation (updated with advanced patterns)
+  │       └─ errorHandler.test.ts              [DONE] 19 tests passing
+  ├─ tsconfig.json                             [DONE] Test config
+  └─ README.md                                 [DONE] Testing documentation (updated with advanced patterns)
 
 Test Results: 68 tests passing | ~8 seconds | 100% statement coverage
 Architecture: Express 5 native async error handling (no asyncHandler needed)
@@ -386,49 +386,49 @@ Coverage: Controllers 100% | ErrorHandler Middleware 100%
 
 ---
 
-## 🎓 **CURRENT LEARNING TRACK: Unit Testing (COMPLETED!)**
+##  **CURRENT LEARNING TRACK: Unit Testing (COMPLETED!)**
 
-### **Status:** ✅ Unit tests complete - Ready for next task
+### **Status:** [DONE] Unit tests complete - Ready for next task
 
 **What We Learned:**
-1. ✅ Unit test fundamentals (mocking, isolation, speed)
-2. ✅ AAA pattern (Arrange-Act-Assert)
-3. ✅ Test structure (describe blocks, it blocks)
-4. ✅ Incremental test development workflow
-5. ✅ Mock utilities and factories
-6. ✅ Jest mocking basics (`jest.mock()`)
-7. ✅ NPM scoped packages (`@prisma/client`)
-8. ✅ Mock function methods (`.mockResolvedValue()`, `.mockReturnValue()`)
-9. ✅ Understanding test assertions (`expect()`)
-10. ✅ Testing patterns (validation, authorization, error handling)
-11. ✅ Express 5 vs 4 async error handling
-12. ✅ Modern error testing with `expect().rejects.toThrow()`
-13. ✅ Separation of concerns (controllers vs error handlers)
-14. ✅ **Advanced mocking patterns** (console spying, environment mocking)
-15. ✅ **Test doubles** (spies, mocks, stubs, fakes - when to use each)
-16. ✅ **Isolation patterns** (test, module, environment, side-effect isolation)
-17. ✅ **Parametric testing** (testing multiple scenarios efficiently)
-18. ✅ **Partial object matching** (`expect.objectContaining()`)
-19. ✅ **Type-safe matchers** (`expect.any(Type)`)
-20. ✅ **Testing middleware in isolation** (errorHandler complete coverage)
-21. ✅ **Mock cleanup patterns** (mockRestore, environment restoration)
-22. ✅ **AppError prototype chain** (`Object.setPrototypeOf`, `Error.captureStackTrace`, `isOperational`)
+1. [DONE] Unit test fundamentals (mocking, isolation, speed)
+2. [DONE] AAA pattern (Arrange-Act-Assert)
+3. [DONE] Test structure (describe blocks, it blocks)
+4. [DONE] Incremental test development workflow
+5. [DONE] Mock utilities and factories
+6. [DONE] Jest mocking basics (`jest.mock()`)
+7. [DONE] NPM scoped packages (`@prisma/client`)
+8. [DONE] Mock function methods (`.mockResolvedValue()`, `.mockReturnValue()`)
+9. [DONE] Understanding test assertions (`expect()`)
+10. [DONE] Testing patterns (validation, authorization, error handling)
+11. [DONE] Express 5 vs 4 async error handling
+12. [DONE] Modern error testing with `expect().rejects.toThrow()`
+13. [DONE] Separation of concerns (controllers vs error handlers)
+14. [DONE] **Advanced mocking patterns** (console spying, environment mocking)
+15. [DONE] **Test doubles** (spies, mocks, stubs, fakes - when to use each)
+16. [DONE] **Isolation patterns** (test, module, environment, side-effect isolation)
+17. [DONE] **Parametric testing** (testing multiple scenarios efficiently)
+18. [DONE] **Partial object matching** (`expect.objectContaining()`)
+19. [DONE] **Type-safe matchers** (`expect.any(Type)`)
+20. [DONE] **Testing middleware in isolation** (errorHandler complete coverage)
+21. [DONE] **Mock cleanup patterns** (mockRestore, environment restoration)
+22. [DONE] **AppError prototype chain** (`Object.setPrototypeOf`, `Error.captureStackTrace`, `isOperational`)
 
-### 🎯 **Next Session - Pick Up Here:**
+###  **Next Session - Pick Up Here:**
 
-## 📋 **SESSION STARTUP PROMPT FOR NEXT AGENT**
+## **SESSION STARTUP PROMPT FOR NEXT AGENT**
 
 **Context:** This is a pet project for learning full-stack development best practices from an SDET/Lead QA perspective. I'm working as an SDET and want to improve both my testing skills and full-stack development knowledge. My goal is to learn senior-level development patterns, especially around testing (unit, integration, e2e), while building practical features.
 
 **Current State:**
-- ✅ Express 5 backend with SQLite + Prisma ORM
-- ✅ 106 unit tests passing (100% coverage on controllers + all middleware)
-- ✅ Mastered TDD workflow (password reset feature implemented with TDD)
-- ✅ Advanced testing patterns (mocking, spies, environment mocking, isolation)
-- ✅ Security middleware fully tested (auth, sanitization, rate limiting)
-- 📂 See `SPEC-HELP-FILES/TODO.app.md` for full context
-- 📂 See `SPEC-FILES/TDD-GUIDE.md` for TDD patterns
-- 📂 See `SPEC-HELP-FILES/TODO.sec.md` for security status
+- [DONE] Express 5 backend with SQLite + Prisma ORM
+- [DONE] 106 unit tests passing (100% coverage on controllers + all middleware)
+- [DONE] Mastered TDD workflow (password reset feature implemented with TDD)
+- [DONE] Advanced testing patterns (mocking, spies, environment mocking, isolation)
+- [DONE] Security middleware fully tested (auth, sanitization, rate limiting)
+-  See `SPEC-HELP-FILES/TODO.app.md` for full context
+-  See `SPEC-FILES/TDD-GUIDE.md` for TDD patterns
+-  See `SPEC-HELP-FILES/TODO.sec.md` for security status
 
 **My Next Goals (in priority order):**
 
@@ -495,23 +495,23 @@ Reference: Standard Docker best practices for Node.js and PostgreSQL
 
 Pick up from here and guide me through the next phase of development!
 
-### 🚀 **Completed Sessions Summary:**
-1. ✅ **Session 2025-11-04:** Project analysis, cleaned up test structure
-2. ✅ **Session 2025-11-12:** Implemented controller unit tests (49 tests)
-3. ✅ **Session 2025-11-17:** Express 5 refactor, removed asyncHandler
-4. ✅ **Session 2025-11-19:** ErrorHandler middleware tests (19 tests), advanced mocking patterns
-5. ✅ **Session 2025-11-23:** Auth middleware tests (14 tests), consistent error handling
-6. ✅ **Session 2025-11-24:** Security middleware tests (24 tests), password reset TDD implementation
-7. ✅ **Session 2025-11-28:** Documentation organization (SPEC-FILES/, guides created), TODO.app.md update
+###  **Completed Sessions Summary:**
+1. [DONE] **Session 2025-11-04:** Project analysis, cleaned up test structure
+2. [DONE] **Session 2025-11-12:** Implemented controller unit tests (49 tests)
+3. [DONE] **Session 2025-11-17:** Express 5 refactor, removed asyncHandler
+4. [DONE] **Session 2025-11-19:** ErrorHandler middleware tests (19 tests), advanced mocking patterns
+5. [DONE] **Session 2025-11-23:** Auth middleware tests (14 tests), consistent error handling
+6. [DONE] **Session 2025-11-24:** Security middleware tests (24 tests), password reset TDD implementation
+7. [DONE] **Session 2025-11-28:** Documentation organization (SPEC-FILES/, guides created), TODO.app.md update
 
-### 🚀 **Next Sessions Roadmap:**
+###  **Next Sessions Roadmap:**
 1. **PostgreSQL Migration** - Database migration best practices (NEXT)
 2. **Docker + Multi-container** - Production deployment patterns
 3. **Frontend Development** - React + TypeScript + Vite
 4. **Deployment + HTTPS** - Learn HTTPS during actual deployment
 
-### 🧠 **Key Decisions Made:**
-- ✅ SQLite → PostgreSQL → Docker (phased approach)
-- ✅ Unit tests (Jest) + E2E tests (Cypress later)
-- ✅ No integration tests (replaced by unit + E2E)
-- ✅ Keep supertest for now (middleware.test.ts needs it)
+###  **Key Decisions Made:**
+- [DONE] SQLite → PostgreSQL → Docker (phased approach)
+- [DONE] Unit tests (Jest) + E2E tests (Cypress later)
+- [DONE] No integration tests (replaced by unit + E2E)
+- [DONE] Keep supertest for now (middleware.test.ts needs it)

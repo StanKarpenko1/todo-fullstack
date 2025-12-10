@@ -5,7 +5,7 @@ Supertest = White box API integration testing (same repo, direct app import, rea
 
 ## Implementation Progress
 
-### ✅ Step 1: E2E Test Structure (COMPLETED)
+### [DONE] Step 1: E2E Test Structure (COMPLETED)
 **Created:**
 - `backend/tests/e2e/` folder
 - `backend/jest.e2e.config.js` - E2E Jest config
@@ -27,7 +27,7 @@ Supertest = White box API integration testing (same repo, direct app import, rea
 
 ---
 
-### ✅ Step 2: NPM Scripts (COMPLETED)
+### [DONE] Step 2: NPM Scripts (COMPLETED)
 **Added to package.json:**
 ```json
 "test:e2e": "jest --config jest.e2e.config.js",
@@ -43,7 +43,7 @@ npm run test:e2e -- --verbose # Real-time test output
 
 ---
 
-### ✅ Step 3: Auth E2E Tests (COMPLETED)
+### [DONE] Step 3: Auth E2E Tests (COMPLETED)
 **File:** `backend/tests/e2e/auth.e2e.test.ts`
 
 **Test Coverage (11 tests):**
@@ -64,7 +64,7 @@ npm run test:e2e -- --verbose # Real-time test output
 
 ---
 
-### ✅ Step 4: Todo CRUD E2E Tests (COMPLETED)
+### [DONE] Step 4: Todo CRUD E2E Tests (COMPLETED)
 **File:** `backend/tests/e2e/todos.e2e.test.ts`
 
 **Test Coverage (23 tests):**
@@ -97,7 +97,7 @@ npm run test:e2e -- --verbose # Real-time test output
 
 ---
 
-### ✅ Step 5: Log Cleanup (COMPLETED)
+### [DONE] Step 5: Log Cleanup (COMPLETED)
 **Problem:** Test logs cluttered with expected errors
 
 **Solution:**
@@ -183,7 +183,7 @@ backend/
 
 ### 1. **Test Like a User (Not Like a Developer)**
 
-✅ **Correct (current approach):**
+[RIGHT] **Correct (current approach):**
 ```typescript
 beforeEach(async () => {
   await cleanDatabase();
@@ -198,7 +198,7 @@ beforeEach(async () => {
 });
 ```
 
-❌ **Incorrect (unit test mentality):**
+[WRONG] **Incorrect (unit test mentality):**
 ```typescript
 beforeEach(async () => {
   // Direct DB insertion (bypasses auth validation)
@@ -214,9 +214,9 @@ beforeEach(async () => {
 - Real user journey
 
 ### 2. **User Isolation Testing**
-- ✅ Create multiple users in same test
-- ✅ Verify user A can't access user B's data
-- ✅ Test authorization at API layer (not just middleware)
+- Create multiple users in same test
+- Verify user A can't access user B's data
+- Test authorization at API layer (not just middleware)
 
 ### 3. **Database Cleanup Strategy**
 - `beforeEach` cleans DB (not `afterEach`)
@@ -305,7 +305,7 @@ jobs:
 
 ## Summary
 
-**Status:** ✅ E2E API testing fully implemented
+**Status:** [DONE] E2E API testing fully implemented
 
 **Coverage:**
 - 34 E2E tests (11 auth + 23 todos)

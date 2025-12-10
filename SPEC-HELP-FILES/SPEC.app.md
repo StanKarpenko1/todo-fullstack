@@ -54,7 +54,7 @@ A production-ready todo application built as a learning project using modern web
 3. Setup frontend with Vite + React + TypeScript
 4. Configure development environment
 
-### Phase 2: Backend Development (✅ Completed)
+### Phase 2: Backend Development ([DONE])
 1. Database setup with Prisma + SQLite
 2. User authentication system (register, login)
 3. Password reset flow (forgot password, reset password)
@@ -75,7 +75,7 @@ A production-ready todo application built as a learning project using modern web
 6. State management with React Query
 7. UI/UX with Material-UI
 
-### Phase 4: Backend Testing (✅ Completed)
+### Phase 4: Backend Testing ([DONE])
 1. Unit tests for controllers (47 tests with Jest)
 2. TDD approach (RED → GREEN → REFACTOR)
 3. Mock all external dependencies (Prisma, bcrypt, JWT, crypto)
@@ -249,7 +249,7 @@ In `frontend/package.json`, the scripts should already be there from Vite:
 - `npm run lint` - Lints code (frontend only)
 - `npm run preview` - Previews production build (frontend only)
 
-**✅ Phase 1 Complete!**
+**[DONE] Phase 1 Complete!**
 
 ---
 
@@ -456,7 +456,7 @@ This creates:
 3. Open browser and visit: `http://localhost:5000/health`
 4. You should see: `{"message":"Server is running!","timestamp":"..."}`
 
-**✅ Phase 2 Basic Setup Complete!**
+**[DONE] Phase 2 Basic Setup Complete!**
 
 ### Step 8: Create Error Handling Middleware
 Create `src/middleware/errorHandler.ts` for centralized error handling:
@@ -700,7 +700,7 @@ export { app };
 
 **Critical:** Error handler must be registered AFTER all routes.
 
-**✅ Phase 2 Backend Complete!**
+**[DONE] Phase 2 Backend Complete!**
 
 ---
 
@@ -709,7 +709,7 @@ export { app };
 ### Testing Strategy
 
 **Two Testing Approaches:**
-1. **Unit Tests** - Test controllers in isolation with mocked dependencies (✅ Implemented)
+1. **Unit Tests** - Test controllers in isolation with mocked dependencies ([DONE])
 2. **Integration Tests** - Test full HTTP endpoints with real database (Planned)
 
 **Current Implementation:**
@@ -852,7 +852,7 @@ npm run test:watch
 npm run test:coverage
 ```
 
-**✅ Phase 3 Testing Complete!**
+**[DONE] Phase 3 Testing Complete!**
 
 ---
 
@@ -885,7 +885,7 @@ npm run test:coverage
 
 **See** `SPEC-FILES/SEC-GUIDE.md` for comprehensive security documentation.
 
-**✅ Phase 4 Security Complete!**
+**[DONE] Phase 4 Security Complete!**
 
 ---
 
