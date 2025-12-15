@@ -314,7 +314,6 @@ describe('Todos Controller - Unit Tests', () => {
           where: { id: todoId },
           data: {
             title: 'Updated Title',
-            description: null,
           },
         });
         expect(res.json).toHaveBeenCalledWith({
