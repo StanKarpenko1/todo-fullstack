@@ -54,7 +54,7 @@ docker-compose.yml
 # Misc
 .prettierrc
 .eslintrc*
-tsconfig.json
+# tsconfig.json - NEEDED for build, don't exclude!
 jest.config.js
 jest.e2e.config.js
 nodemon.json

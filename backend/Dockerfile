@@ -27,8 +27,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies only
-RUN npm ci --omit=dev
+# Install production dependencies only (skip scripts like husky)
+RUN npm ci --omit=dev --ignore-scripts
 
 # Copy Prisma schema and generate client
 COPY prisma ./prisma/
