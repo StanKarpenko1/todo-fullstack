@@ -1,6 +1,74 @@
 # Database Management Guide
 
-## SQLite � PostgreSQL Migration
+## Quick Start (Follow-Up Dev Sessions)
+
+**Use this when continuing work on already-setup project.**
+
+### Start Everything (DB + Backend)
+```bash
+# Start both services
+docker-compose up -d
+
+# Check status
+docker ps
+
+# View logs
+docker-compose logs -f backend
+
+# Test backend
+curl http://localhost:5000/health
+```
+
+### Start Step-by-Step (Learning)
+```bash
+# Start database first
+docker-compose up -d postgres
+
+# Verify postgres is healthy
+docker ps
+
+# Start backend (waits for postgres health)
+docker-compose up -d backend
+
+# Follow logs
+docker-compose logs -f backend
+```
+
+### Stop Services
+```bash
+# Stop everything (keeps volumes/data)
+docker-compose down
+
+# Stop specific service
+docker-compose stop postgres
+docker-compose stop backend
+
+# Start again
+docker-compose up -d
+```
+
+### Rebuild After Code Changes
+```bash
+# Rebuild and restart backend
+docker-compose up -d --build backend
+
+# View logs for errors
+docker-compose logs -f backend
+```
+
+**What Happens on Startup:**
+1. Postgres starts → healthcheck runs (10s intervals)
+2. Backend waits for postgres healthy status
+3. Migrations run automatically (`npx prisma migrate deploy`)
+4. Server starts on port 5000
+
+---
+
+## Initial Setup (Creating From Scratch)
+
+**Use this for first-time setup or understanding the manual migration process.**
+
+### SQLite → PostgreSQL Migration
 
 ### 1. Start PostgreSQL (Docker)
 ```powershell
@@ -42,25 +110,41 @@ npm test  # All tests should pass (mocked, DB-agnostic)
 
 ## Common Docker Commands
 
-```powershell
-# Check running containers
+### With Docker Compose (Current Setup - Preferred)
+```bash
+# Start/stop services
+docker-compose up -d              # Start everything
+docker-compose up -d postgres     # Start postgres only
+docker-compose up -d backend      # Start backend only
+docker-compose stop postgres      # Stop postgres
+docker-compose down               # Stop everything
+
+# View logs
+docker-compose logs -f backend    # Follow backend logs
+docker-compose logs postgres      # View postgres logs
+
+# Rebuild after code changes
+docker-compose up -d --build backend
+
+# Check status
 docker ps
+```
 
-# Stop PostgreSQL
-docker stop todo-postgres
+### Manual Docker Commands (Also Work)
+```bash
+# Direct container control (works but less preferred)
+docker stop todo-postgres         # Stop postgres container
+docker start todo-postgres        # Start postgres container
+docker rm todo-postgres           # Remove container
 
-# Start PostgreSQL
-docker start todo-postgres
-
-# Remove container
-docker rm todo-postgres
-
-# Connect to database
+# Database access (works with both setups)
 docker exec -it todo-postgres psql -U postgres -d todo_dev
 
 # Exit psql
 \q
 ```
+
+**Rule:** Prefer `docker-compose` commands when `docker-compose.yml` exists. Direct `docker` commands work but don't manage dependencies/networks.
 
 ---
 
@@ -161,10 +245,20 @@ SELECT email, name FROM "User";
 postgresql://[user]:[password]@[host]:[port]/[database]
 ```
 
-**Development (Docker):** `postgresql://postgres:postgres@localhost:5432/todo_dev`
+**Development (Local backend, Docker DB):**
+```
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/todo_dev"
+```
+- Backend runs on host machine
+- Connects to Docker container via `localhost:5432`
 
-**Production (Container):** `postgresql://postgres:postgres@postgres:5432/todo_dev`
-- `postgres` (host) = container name in docker-compose
+**Production (Docker Compose - Both containerized):**
+```
+DATABASE_URL="postgresql://postgres:postgres@postgres:5432/todo_dev"
+```
+- Backend runs in Docker container
+- Connects via service name `postgres` (Docker internal networking)
+- Defined in `docker-compose.yml`
 
 ---
 
@@ -182,26 +276,54 @@ postgresql://[user]:[password]@[host]:[port]/[database]
 ## Troubleshooting
 
 **Error: Docker not running**
-```
-Start Docker Desktop, wait 30 seconds
+```bash
+# Start Docker Desktop, wait 30 seconds
+docker ps  # Verify Docker is responding
 ```
 
-**Error: Port 5432 already in use**
-```powershell
-docker ps  # Check if container already running
-docker stop todo-postgres
+**Error: Port 5432 or 5000 already in use**
+```bash
+docker ps -a                      # Check existing containers
+docker-compose down               # Stop all services
+docker stop todo-postgres         # Or stop specific container
+```
+
+**Error: Backend can't connect to database**
+```bash
+# 1. Check postgres is healthy
+docker ps  # Look for "healthy" status
+
+# 2. Check backend logs
+docker-compose logs backend
+
+# 3. Verify connection string in docker-compose.yml
+# Should be: postgresql://postgres:postgres@postgres:5432/todo_dev
 ```
 
 **Error: Provider mismatch (P3019)**
-```powershell
+```bash
+# Delete migrations and recreate
 Remove-Item -Recurse -Force prisma\migrations
 npx prisma migrate dev --name init
 ```
 
-**Error: Can't connect to database**
-```powershell
-docker ps  # Verify container running
-# Check DATABASE_URL in .env matches container
+**Error: Migrations not running in container**
+```bash
+# Check backend startup logs
+docker-compose logs backend
+
+# Manually run migrations
+docker-compose exec backend npx prisma migrate deploy
+```
+
+**Error: Container won't start (crash loop)**
+```bash
+# View error logs
+docker-compose logs backend
+
+# Rebuild from scratch
+docker-compose down
+docker-compose up -d --build backend
 ```
 
 ---
