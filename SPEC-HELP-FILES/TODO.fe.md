@@ -262,3 +262,75 @@ frontend/
 
 ---
 
+## Implementation Progress
+
+### [DONE] Foundation & TDD Setup
+
+**Completed:**
+- ✅ Folder structure created (features, pages, shared, test)
+- ✅ Vite configured (aliases, proxy, Vitest)
+- ✅ TypeScript configured (path aliases, strict mode)
+- ✅ Test environment setup (`src/test/setup.ts`)
+
+**Files:**
+- `vite.config.ts` - Path aliases, backend proxy, test config
+- `tsconfig.app.json` - TypeScript paths, strict checks
+- `src/test/setup.ts` - Jest-DOM matchers
+
+---
+
+### [DONE] API Client (TDD Implementation)
+
+**File:** `shared/api/apiClient.ts` + `apiClient.test.ts`
+
+**Features Implemented:**
+1. Axios instance with `/api` baseURL
+2. Request interceptor - JWT token attachment
+3. Response interceptor - 401 error handling (logout + redirect)
+4. Domain check - prevent token leakage to external URLs
+
+**Tests:** 5 passing
+- Axios instance configuration
+- Token attachment when exists
+- No token when missing
+- External URL protection (security)
+
+**Key Patterns:**
+```typescript
+// Mock setup BEFORE import
+vi.mock('axios', () => ({
+  default: { create: vi.fn(() => mockInstance) }
+}));
+const { apiClient } = await import('./apiClient');
+
+// Extract interceptor for testing
+const interceptor = vi.mocked(apiClient.interceptors.request.use)
+  .mock.calls[0]?.[0];
+
+// Test behavior
+const result = interceptor(mockConfig);
+expect(result.headers.Authorization).toBe('Bearer token');
+```
+
+**Security:** Domain check prevents token leakage to third-party APIs
+
+**Run tests:** `npm test`
+
+---
+
+### Next Steps
+
+1. **AuthContext** - Global auth state (user, login, logout)
+2. **Auth API** - `features/auth/api/authApi.ts` (login, register, reset)
+3. **Auth Hooks** - `useLogin`, `useRegister` with React Query
+4. **Login Component** - Form with validation (React Hook Form + Zod)
+5. **Protected Routes** - Auth guards for dashboard
+
+**TDD Workflow:**
+- Write test first (RED)
+- Implement minimal code (GREEN)
+- Refactor if needed
+- Repeat
+
+---
+

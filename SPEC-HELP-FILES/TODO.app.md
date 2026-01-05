@@ -2,17 +2,26 @@
 
 ## Current Status
 
-**Test Suite:** 127 tests passing (~21 seconds)
+**Backend:**
+- Test Suite: 127 tests passing (~21 seconds)
 - 47 tests: Auth controllers (register, login, forgotPassword, resetPassword)
 - 23 tests: Todo controllers (CRUD operations)
 - 14 tests: Auth middleware (JWT validation)
 - 24 tests: Security middleware (input sanitization, request size limiting)
 - 19 tests: ErrorHandler middleware
 - Coverage: 100% statement coverage on all controllers & middleware
+- Architecture: Express 5, TypeScript, Prisma ORM, PostgreSQL (Docker)
 
-**Architecture:** Express 5, TypeScript, Prisma ORM, PostgreSQL (Docker)
-**Database:** PostgreSQL 15 (Docker container)
-**Security:** See `SPEC-HELP-FILES/TODO.sec.md` for detailed security status
+**Frontend:**
+- Foundation setup complete (Vite, React, TypeScript, Vitest)
+- API Client implemented with TDD (5 tests passing)
+- Feature structure created (auth, todos, shared)
+- Reference: See `SPEC-HELP-FILES/TODO.fe.md` for frontend progress
+
+**Infrastructure:**
+- Database: PostgreSQL 15 (Docker container)
+- Backend: Dockerized with docker-compose
+- Security: See `SPEC-HELP-FILES/TODO.sec.md` for security status
 
 ---
 
