@@ -12,25 +12,18 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-
-    // Only add token to internal API requests (prevent leakage to external domains)
-    const isInternalAPI = config.url?.startsWith('/api');
-
-    if (token && isInternalAPI) {
+    if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor - handle errors globally
+// Response interceptor - handle 401 errors
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Handle 401 Unauthorized (token expired)
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       window.location.href = '/login';

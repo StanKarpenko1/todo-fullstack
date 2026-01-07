@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import axios, { type InternalAxiosRequestConfig } from 'axios';
+import axios, { type InternalAxiosRequestConfig, type AxiosError } from 'axios';
 
 // Mock axios BEFORE importing apiClient
 vi.mock('axios', () => {
@@ -27,12 +27,13 @@ const { apiClient } = await import('./apiClient');
 
 describe('apiClient', () => {
   beforeEach(() => {
-    // Don't clear mocks - they're set during module import
     localStorage.clear();
+    // Clear location.href mock
+    delete (window as any).location;
+    (window as any).location = { href: '' };
   });
 
   it('should create axios instance with correct baseURL', () => {
-    // ASSERT - axios.create was called during module import
     expect(axios.create).toHaveBeenCalledWith({
       baseURL: '/api',
       headers: {
@@ -41,21 +42,16 @@ describe('apiClient', () => {
     });
   });
 
-  it('should attach authorization token to requests if token exists', () => {
+  it('should attach authorization token when token exists', () => {
     // ARRANGE
     const mockToken = 'test-token-123';
     localStorage.setItem('token', mockToken);
 
-    // Get the request interceptor function (first argument of first call)
     const requestInterceptor = vi.mocked(apiClient.interceptors.request.use).mock.calls[0]?.[0];
-
-    // Type guard
-    if (!requestInterceptor) {
-      throw new Error('Request interceptor not found');
-    }
+    if (!requestInterceptor) throw new Error('Request interceptor not found');
 
     const mockConfig: InternalAxiosRequestConfig = {
-      url: '/api/todos', // ← Add URL that starts with /api
+      url: '/todos',
       headers: {} as any,
     } as InternalAxiosRequestConfig;
 
@@ -66,20 +62,13 @@ describe('apiClient', () => {
     expect(result.headers.Authorization).toBe(`Bearer ${mockToken}`);
   });
 
-  it('should NOT attach authorization header if token does not exist', () => {
+  it('should NOT attach authorization token when token does not exist', () => {
     // ARRANGE - no token in localStorage
-    localStorage.removeItem('token');
-
-    // Get the request interceptor function
     const requestInterceptor = vi.mocked(apiClient.interceptors.request.use).mock.calls[0]?.[0];
-
-    // Type guard
-    if (!requestInterceptor) {
-      throw new Error('Request interceptor not found');
-    }
+    if (!requestInterceptor) throw new Error('Request interceptor not found');
 
     const mockConfig: InternalAxiosRequestConfig = {
-      url: '/api/todos', // ← Add URL
+      url: '/todos',
       headers: {} as any,
     } as InternalAxiosRequestConfig;
 
@@ -90,28 +79,30 @@ describe('apiClient', () => {
     expect(result.headers.Authorization).toBeUndefined();
   });
 
-  it('should NOT attach authorization header to external URLs', () => {
+  it('should remove token and redirect to login on 401 error', async () => {
     // ARRANGE
-    const mockToken = 'test-token-123';
-    localStorage.setItem('token', mockToken);
+    localStorage.setItem('token', 'expired-token');
 
-    // Get the request interceptor function
-    const requestInterceptor = vi.mocked(apiClient.interceptors.request.use).mock.calls[0]?.[0];
+    const responseInterceptor = vi.mocked(apiClient.interceptors.response.use).mock.calls[0]?.[1];
+    if (!responseInterceptor) throw new Error('Response error interceptor not found');
 
-    // Type guard
-    if (!requestInterceptor) {
-      throw new Error('Request interceptor not found');
-    }
+    const mockError: Partial<AxiosError> = {
+      response: {
+        status: 401,
+        data: {},
+        statusText: 'Unauthorized',
+        headers: {},
+        config: {} as any,
+      },
+    };
 
-    const mockConfig: InternalAxiosRequestConfig = {
-      url: 'https://external-analytics.com/track', // ← External URL
-      headers: {} as any,
-    } as InternalAxiosRequestConfig;
+    // ACT & ASSERT
+    await expect(responseInterceptor(mockError as AxiosError)).rejects.toEqual(mockError);
 
-    // ACT
-    const result = requestInterceptor(mockConfig) as InternalAxiosRequestConfig;
+    // Verify token removed
+    expect(localStorage.getItem('token')).toBeNull();
 
-    // ASSERT - Token should NOT be added to external requests
-    expect(result.headers.Authorization).toBeUndefined();
+    // Verify redirect
+    expect(window.location.href).toBe('/login');
   });
 });

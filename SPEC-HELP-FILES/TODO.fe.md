@@ -264,73 +264,200 @@ frontend/
 
 ## Implementation Progress
 
-### [DONE] Foundation & TDD Setup
-
-**Completed:**
-- ✅ Folder structure created (features, pages, shared, test)
-- ✅ Vite configured (aliases, proxy, Vitest)
-- ✅ TypeScript configured (path aliases, strict mode)
-- ✅ Test environment setup (`src/test/setup.ts`)
-
-**Files:**
-- `vite.config.ts` - Path aliases, backend proxy, test config
-- `tsconfig.app.json` - TypeScript paths, strict checks
-- `src/test/setup.ts` - Jest-DOM matchers
-
----
-
-### [DONE] API Client (TDD Implementation)
-
-**File:** `shared/api/apiClient.ts` + `apiClient.test.ts`
-
-**Features Implemented:**
-1. Axios instance with `/api` baseURL
-2. Request interceptor - JWT token attachment
-3. Response interceptor - 401 error handling (logout + redirect)
-4. Domain check - prevent token leakage to external URLs
-
-**Tests:** 5 passing
-- Axios instance configuration
-- Token attachment when exists
-- No token when missing
-- External URL protection (security)
-
-**Key Patterns:**
+### [DONE] 1. API Client
+**File:** `shared/api/apiClient.ts` + test
+**Tests:** 4 passing
+**Implementation:**
 ```typescript
-// Mock setup BEFORE import
-vi.mock('axios', () => ({
-  default: { create: vi.fn(() => mockInstance) }
-}));
-const { apiClient } = await import('./apiClient');
+// Axios instance with baseURL
+export const apiClient = axios.create({ baseURL: '/api' });
 
-// Extract interceptor for testing
-const interceptor = vi.mocked(apiClient.interceptors.request.use)
-  .mock.calls[0]?.[0];
+// Request interceptor - attach JWT
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
 
-// Test behavior
-const result = interceptor(mockConfig);
-expect(result.headers.Authorization).toBe('Bearer token');
+// Response interceptor - 401 handling
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
 ```
 
-**Security:** Domain check prevents token leakage to third-party APIs
-
-**Run tests:** `npm test`
+**Key lesson:** Keep it simple. No over-engineering. Token attached to all requests, 401 auto-logout.
 
 ---
 
-### Next Steps
+### [DONE] 2. Auth Types
+**File:** `features/auth/types/auth.types.ts`
+```typescript
+interface User { id: string; email: string; name: string; }
+interface LoginCredentials { email: string; password: string; }
+interface RegisterData { name: string; email: string; password: string; }
+interface AuthResponse { token: string; user: User; }
+```
 
-1. **AuthContext** - Global auth state (user, login, logout)
-2. **Auth API** - `features/auth/api/authApi.ts` (login, register, reset)
-3. **Auth Hooks** - `useLogin`, `useRegister` with React Query
-4. **Login Component** - Form with validation (React Hook Form + Zod)
-5. **Protected Routes** - Auth guards for dashboard
+---
 
-**TDD Workflow:**
-- Write test first (RED)
-- Implement minimal code (GREEN)
-- Refactor if needed
-- Repeat
+### [DONE] 3. AuthContext
+**File:** `shared/contexts/AuthContext.tsx` + test
+**Tests:** 5 passing
+**Provides:**
+```typescript
+const { user, isAuthenticated, login, logout } = useAuth();
+```
+
+**Key features:**
+- State persistence (localStorage restore on mount)
+- `login(token, user)` - stores token + user
+- `logout()` - clears everything
+- Error if used outside provider
+
+**Implementation:**
+```typescript
+const [user, setUser] = useState<User | null>(null);
+
+// Restore on mount
+useEffect(() => {
+  const token = localStorage.getItem('token');
+  const storedUser = localStorage.getItem('user');
+  if (token && storedUser) setUser(JSON.parse(storedUser));
+}, []);
+
+const login = (token, userData) => {
+  localStorage.setItem('token', token);
+  localStorage.setItem('user', JSON.stringify(userData));
+  setUser(userData);
+};
+```
+
+**Wired in:** `App.tsx` wrapped with `<AuthProvider>`
+
+---
+
+### [DONE] 4. Auth API Layer
+**File:** `features/auth/api/authApi.ts` + test
+**Tests:** 6 passing
+**Functions:**
+```typescript
+loginUser(credentials) → POST /auth/login → AuthResponse
+registerUser(userData) → POST /auth/register → AuthResponse
+forgotPassword(email) → POST /auth/forgot-password → { message }
+resetPassword(token, password) → POST /auth/reset-password → { message }
+```
+
+**Pattern:** Pure HTTP functions, no React dependencies
+```typescript
+export const loginUser = async (credentials: LoginCredentials): Promise<AuthResponse> => {
+  const { data } = await apiClient.post<AuthResponse>('/auth/login', credentials);
+  return data;
+};
+```
+
+---
+
+### [NEXT] 5. Auth Hooks (React Query)
+**Files:** `features/auth/hooks/useLogin.ts`, `useRegister.ts`
+**Purpose:** Connect API + AuthContext with React Query mutations
+
+**Pattern:**
+```typescript
+export const useLogin = () => {
+  const { login } = useAuth();
+
+  return useMutation({
+    mutationFn: loginUser,
+    onSuccess: (data) => {
+      login(data.token, data.user);
+    },
+  });
+};
+
+// Usage in component:
+const { mutate: login, isPending } = useLogin();
+login({ email, password });
+```
+
+**Provides:** Loading states, error handling, automatic AuthContext updates
+
+---
+
+### [TODO] 6. Login Form Component
+**File:** `features/auth/components/LoginForm.tsx`
+**Tech:** React Hook Form + Zod validation + MUI
+**First visible UI**
+
+**Pattern:**
+```typescript
+const { mutate: login, isPending } = useLogin();
+const { register, handleSubmit } = useForm<LoginCredentials>();
+
+const onSubmit = (data) => login(data);
+```
+
+---
+
+### [TODO] 7. Routing + Protected Routes
+**Files:** `App.tsx` (React Router), `shared/components/ProtectedRoute.tsx`
+**Routes:**
+- `/login` - LoginPage
+- `/register` - RegisterPage
+- `/dashboard` - DashboardPage (protected)
+
+**Protected route pattern:**
+```typescript
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? children : <Navigate to="/login" />;
+};
+```
+
+---
+
+## Testing Patterns (Reusable)
+
+### Mock apiClient
+```typescript
+vi.mock('@shared/api/apiClient', () => ({
+  apiClient: { post: vi.fn() }
+}));
+vi.mocked(apiClient.post).mockResolvedValue({ data: mockResponse });
+```
+
+### Test Context Hooks
+```typescript
+const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
+act(() => result.current.login(token, user));
+expect(result.current.isAuthenticated).toBe(true);
+```
+
+### Test React Query Hooks
+```typescript
+const wrapper = ({ children }) => (
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>{children}</AuthProvider>
+  </QueryClientProvider>
+);
+const { result } = renderHook(() => useLogin(), { wrapper });
+```
+
+---
+
+## Key Lessons
+
+1. **Simple > Complex** - Removed URL security checks (over-engineering)
+2. **Separation of layers** - API (HTTP) → Hooks (React Query) → Components (UI)
+3. **TDD workflow** - Write test → implement → refactor
+4. **No mixing concerns** - Components don't call APIs directly
+5. **Pure functions** - API layer has no React dependencies
 
 ---
 
