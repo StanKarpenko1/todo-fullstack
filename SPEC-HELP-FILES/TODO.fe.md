@@ -264,6 +264,27 @@ frontend/
 
 ## Implementation Progress
 
+### **Test Summary: 34 tests passing**
+
+**Infrastructure Layer (15 tests):**
+- ✅ API Client: 4 tests
+- ✅ Auth API Layer: 6 tests
+- ✅ AuthContext: 5 tests
+
+**Business Logic Layer - Auth Hooks (19 tests):**
+- ✅ useLogin: 4 tests
+- ✅ useRegister: 4 tests
+- ✅ useForgotPassword: 5 tests
+- ✅ useResetPassword: 6 tests
+
+**UI Layer (0 tests - next phase):**
+- ⏳ LoginForm
+- ⏳ RegisterForm
+- ⏳ ForgotPasswordForm
+- ⏳ ResetPasswordForm
+
+---
+
 ### [DONE] 1. API Client
 **File:** `shared/api/apiClient.ts` + test
 **Tests:** 4 passing
@@ -364,9 +385,15 @@ export const loginUser = async (credentials: LoginCredentials): Promise<AuthResp
 
 ---
 
-### [NEXT] 5. Auth Hooks (React Query)
-**Files:** `features/auth/hooks/useLogin.ts`, `useRegister.ts`
-**Purpose:** Connect API + AuthContext with React Query mutations
+### [DONE] 5. Auth Hooks (React Query)
+**Files:** `features/auth/hooks/` - 4 hooks implemented
+**Tests:** 19 passing (4 + 4 + 5 + 6)
+
+**Hooks implemented:**
+1. **useLogin** (4 tests) - Authenticate existing user
+2. **useRegister** (4 tests) - Create new user + auto-login
+3. **useForgotPassword** (5 tests) - Send password reset email
+4. **useResetPassword** (6 tests) - Reset password with token
 
 **Pattern:**
 ```typescript
@@ -382,15 +409,26 @@ export const useLogin = () => {
 };
 
 // Usage in component:
-const { mutate: login, isPending } = useLogin();
+const { mutate: login, isPending, error } = useLogin();
 login({ email, password });
 ```
 
-**Provides:** Loading states, error handling, automatic AuthContext updates
+**Key decisions:**
+- **Auto-login:** `useLogin` and `useRegister` update AuthContext on success
+- **No auto-login:** `useForgotPassword` and `useResetPassword` don't update AuthContext (security best practice)
+- **Consistent pattern:** All hooks use `useMutation` from React Query
+- **Loading/error states:** Free from React Query (no manual state management)
+
+**What we learned:**
+- `useMutation` provides automatic loading/error/success states
+- When to update AuthContext (login/register yes, reset password no)
+- TDD workflow reinforcement (RED → GREEN → REFACTOR)
+- Testing React Query hooks with `renderHook` and `waitFor`
+- Creating test wrappers with QueryClientProvider
 
 ---
 
-### [TODO] 6. Login Form Component
+### [NEXT] 6. Login Form Component
 **File:** `features/auth/components/LoginForm.tsx`
 **Tech:** React Hook Form + Zod validation + MUI
 **First visible UI**
@@ -422,42 +460,252 @@ const ProtectedRoute = ({ children }) => {
 
 ---
 
-## Testing Patterns (Reusable)
+## Testing Patterns (Reusable Reference)
 
-### Mock apiClient
+### 1. Mock apiClient (Infrastructure Layer)
 ```typescript
+// Mock axios-based apiClient
 vi.mock('@shared/api/apiClient', () => ({
   apiClient: { post: vi.fn() }
 }));
+
+// Mock API responses
 vi.mocked(apiClient.post).mockResolvedValue({ data: mockResponse });
 ```
 
-### Test Context Hooks
+### 2. Test Context Hooks (State Management)
 ```typescript
+// Testing AuthContext in isolation
 const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 act(() => result.current.login(token, user));
 expect(result.current.isAuthenticated).toBe(true);
 ```
 
-### Test React Query Hooks
+### 3. Test React Query Hooks (Business Logic)
+**Setup (before each test):**
 ```typescript
-const wrapper = ({ children }) => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>{children}</AuthProvider>
-  </QueryClientProvider>
-);
-const { result } = renderHook(() => useLogin(), { wrapper });
+let queryClient: QueryClient;
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+});
 ```
+
+**Wrapper pattern:**
+```typescript
+const createWrapper = () => {
+  const mockLogin = vi.fn();
+
+  // Mock AuthContext if needed
+  vi.mocked(useAuth).mockReturnValue({
+    login: mockLogin,
+    logout: vi.fn(),
+    user: null,
+    isAuthenticated: false,
+  });
+
+  return {
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>
+        {children}
+      </QueryClientProvider>
+    ),
+    mockLogin, // Return mocks for assertions
+  };
+};
+```
+
+**Test mutation calls:**
+```typescript
+it('should call API on mutation', async () => {
+  // ARRANGE
+  const { wrapper } = createWrapper();
+  vi.mocked(loginUser).mockResolvedValue(mockResponse);
+
+  // ACT
+  const { result } = renderHook(() => useLogin(), { wrapper });
+  result.current.mutate({ email, password });
+
+  // ASSERT
+  await waitFor(() => {
+    expect(loginUser).toHaveBeenCalledWith({ email, password });
+  });
+});
+```
+
+**Test loading states:**
+```typescript
+it('should return loading state during mutation', async () => {
+  const { wrapper } = createWrapper();
+  vi.mocked(loginUser).mockImplementation(
+    () => new Promise((resolve) => setTimeout(resolve, 100))
+  );
+
+  const { result } = renderHook(() => useLogin(), { wrapper });
+
+  expect(result.current.isPending).toBe(false); // Initial
+  result.current.mutate({ email, password });
+
+  await waitFor(() => {
+    expect(result.current.isPending).toBe(true); // During mutation
+  });
+});
+```
+
+**Test success callbacks:**
+```typescript
+it('should call AuthContext.login on success', async () => {
+  const { wrapper, mockLogin } = createWrapper();
+  vi.mocked(loginUser).mockResolvedValue(mockResponse);
+
+  const { result } = renderHook(() => useLogin(), { wrapper });
+  result.current.mutate({ email, password });
+
+  await waitFor(() => {
+    expect(mockLogin).toHaveBeenCalledWith(token, user);
+  });
+});
+```
+
+**Test error handling:**
+```typescript
+it('should handle API errors', async () => {
+  const { wrapper } = createWrapper();
+  const mockError = new Error('Invalid credentials');
+  vi.mocked(loginUser).mockRejectedValue(mockError);
+
+  const { result } = renderHook(() => useLogin(), { wrapper });
+  result.current.mutate({ email, password });
+
+  await waitFor(() => {
+    expect(result.current.error).toEqual(mockError);
+  });
+});
+```
+
+### 4. Important Notes
+
+**File extensions for JSX:**
+- Use `.tsx` for test files that render JSX (wrapper components)
+- Use `.ts` for test files without JSX
+
+**React import in tests:**
+- **Modern React (17+):** No need to import React for JSX
+- Just import types: `import { type ReactNode } from 'react';`
+
+**AAA Pattern (Arrange-Act-Assert):**
+- Always structure tests with clear sections
+- Makes tests readable and maintainable
+
+**waitFor vs act:**
+- `waitFor`: Use for async operations (API calls, state updates)
+- `act`: Use for synchronous state updates (deprecated for most cases with React Testing Library)
 
 ---
 
-## Key Lessons
+## Key Lessons Learned
 
-1. **Simple > Complex** - Removed URL security checks (over-engineering)
-2. **Separation of layers** - API (HTTP) → Hooks (React Query) → Components (UI)
-3. **TDD workflow** - Write test → implement → refactor
-4. **No mixing concerns** - Components don't call APIs directly
-5. **Pure functions** - API layer has no React dependencies
+### Architecture & Design
+1. **Separation of layers** - API (HTTP) → Hooks (React Query) → Components (UI)
+   - API layer: Pure functions, no React dependencies
+   - Hooks layer: Business logic + React Query integration
+   - Components: UI only, consume hooks
+
+2. **Simple > Complex** - Avoid over-engineering
+   - Keep implementations minimal
+   - Don't add abstractions until needed
+
+3. **No mixing concerns** - Components don't call APIs directly
+   - Always use hooks as intermediary
+   - Keeps components testable and maintainable
+
+### React Query (useMutation)
+4. **useMutation benefits:**
+   - Automatic loading/error/success states
+   - No manual try-catch needed
+   - Built-in retry logic available
+   - Consistent pattern across all mutations
+
+5. **When to update AuthContext:**
+   - ✅ Login/Register → Auto-login after success
+   - ❌ ForgotPassword/ResetPassword → Security best practice (manual login)
+
+### Testing & TDD
+6. **TDD workflow value:**
+   - RED: Write failing test (think through requirements)
+   - GREEN: Implement minimal code
+   - REFACTOR: Improve (often not needed initially)
+   - Forces you to think about API design before implementation
+
+7. **Testing patterns:**
+   - Mock external dependencies (API, context)
+   - Test behavior, not implementation
+   - Use AAA pattern (Arrange-Act-Assert)
+   - Test loading states, success, and errors
+
+8. **When TDD is valuable:**
+   - Complex business logic (auth flows, validation)
+   - Learning new patterns (React Query, hooks)
+   - Team environments (ensures tests exist)
+   - Refactoring (tests prevent regressions)
+
+9. **Test setup issues ≠ failed tests:**
+   - JSX syntax errors (file extension, imports)
+   - Timing issues (waitFor for async)
+   - These are setup problems, not real RED phase
+
+### React Patterns
+10. **Modern React (17+):**
+    - No React import needed for JSX
+    - New JSX transform doesn't use `React.createElement()`
+
+11. **Hook testing:**
+    - Use `renderHook` from React Testing Library
+    - Create fresh QueryClient per test (isolation)
+    - Return mocks from wrapper for assertions
+
+---
+
+## 🎉 Phase 1 Complete: API & Hooks Layer (Infrastructure + Business Logic)
+
+### What We Built:
+✅ **34 tests passing** across 7 test files
+✅ **Infrastructure:** apiClient, authApi, AuthContext
+✅ **Business Logic:** useLogin, useRegister, useForgotPassword, useResetPassword
+✅ **TDD Workflow:** Practiced RED → GREEN → REFACTOR for all hooks
+✅ **Testing Patterns:** Established reusable patterns for future features
+
+### Architecture Achieved:
+```
+[Backend API]
+    ↓
+[apiClient] ← axios instance with interceptors
+    ↓
+[authApi] ← pure HTTP functions
+    ↓
+[Auth Hooks] ← React Query mutations + AuthContext integration
+    ↓
+[Components] ← Next phase (UI layer)
+```
+
+### What's Next: Phase 2 - UI Components Layer
+Now we build the visible UI that consumes our tested hooks:
+1. LoginForm (uses useLogin hook)
+2. RegisterForm (uses useRegister hook)
+3. ForgotPasswordForm (uses useForgotPassword hook)
+4. ResetPasswordForm (uses useResetPassword hook)
+
+**Testing approach for components:**
+- Test user interactions (type, click, submit)
+- Test form validation
+- Test loading/error states display
+- Mock hooks (not API directly)
 
 ---
 
