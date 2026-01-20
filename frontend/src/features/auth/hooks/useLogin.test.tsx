@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useLogin } from './useLogin';
 import { loginUser } from '../api/authApi';
 import { useAuth } from '@/shared/contexts/AuthContext';
-import React, { type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 
 // Mock dependencies
 vi.mock('../api/authApi');

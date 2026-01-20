@@ -1,7 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { loginUser } from '../api/authApi';
 import { useAuth } from '@/shared/contexts/AuthContext';
-import type { LoginCredentials } from '../types/auth.types';
 
 /**
  * Custom hook for login functionality

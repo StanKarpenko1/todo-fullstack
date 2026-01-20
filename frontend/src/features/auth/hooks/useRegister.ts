@@ -1,7 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { registerUser } from '../api/authApi';
 import { useAuth } from '@/shared/contexts/AuthContext';
-import type { RegisterData } from '../types/auth.types';
 
 /**
  * Custom hook for registration functionality
