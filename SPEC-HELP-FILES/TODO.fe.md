@@ -264,10 +264,10 @@ frontend/
 
 ## Implementation Progress
 
-### **Test Summary: 34 tests passing**
+### **Test Summary: 92 tests passing**
 
-**Infrastructure Layer (15 tests):**
-- ✅ API Client: 4 tests
+**Infrastructure Layer (19 tests):**
+- ✅ API Client: 8 tests (added error message transformation)
 - ✅ Auth API Layer: 6 tests
 - ✅ AuthContext: 5 tests
 
@@ -277,17 +277,21 @@ frontend/
 - ✅ useForgotPassword: 5 tests
 - ✅ useResetPassword: 6 tests
 
-**UI Layer (0 tests - next phase):**
-- ⏳ LoginForm
-- ⏳ RegisterForm
-- ⏳ ForgotPasswordForm
-- ⏳ ResetPasswordForm
+**UI Components Layer (50 tests):**
+- ✅ LoginForm: 13 tests (includes password visibility toggle)
+- ✅ RegisterForm: 13 tests (includes password visibility toggle)
+- ✅ ForgotPasswordForm: 10 tests
+- ✅ ResetPasswordForm: 14 tests (2 password fields with toggles)
+
+**Route Guards (4 tests):**
+- ✅ ProtectedRoute: 2 tests
+- ✅ PublicRoute: 2 tests
 
 ---
 
 ### [DONE] 1. API Client
 **File:** `shared/api/apiClient.ts` + test
-**Tests:** 4 passing
+**Tests:** 8 passing
 **Implementation:**
 ```typescript
 // Axios instance with baseURL
@@ -300,7 +304,7 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor - 401 handling
+// Response interceptor - 401 handling + error transformation
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -308,12 +312,21 @@ apiClient.interceptors.response.use(
       localStorage.removeItem('token');
       window.location.href = '/login';
     }
-    return Promise.reject(error);
+
+    // Transform backend errors to clean messages
+    let errorMessage = 'Something went wrong. Please try again.';
+    if (error.response?.data?.error) {
+      errorMessage = error.response.data.error;
+    } else if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    }
+
+    return Promise.reject(new Error(errorMessage));
   }
 );
 ```
 
-**Key lesson:** Keep it simple. No over-engineering. Token attached to all requests, 401 auto-logout.
+**Key lesson:** Error transformation in interceptor prevents "Request failed with status code 400" messages. Extract meaningful backend errors.
 
 ---
 
@@ -428,35 +441,128 @@ login({ email, password });
 
 ---
 
-### [NEXT] 6. Login Form Component
-**File:** `features/auth/components/LoginForm.tsx`
-**Tech:** React Hook Form + Zod validation + MUI
-**First visible UI**
+### [DONE] 6. Auth UI Components
+**Files:** `features/auth/components/` - 4 forms implemented
+**Tests:** 50 passing (13 + 13 + 10 + 14)
+**Tech Stack:** React Hook Form + Zod validation + MUI
+
+**Components:**
+1. **LoginForm** (13 tests) - Email + password with visibility toggle
+2. **RegisterForm** (13 tests) - Name + email + password with visibility toggle
+3. **ForgotPasswordForm** (10 tests) - Email only, success message
+4. **ResetPasswordForm** (14 tests) - New password + confirm password, both with toggles
 
 **Pattern:**
 ```typescript
-const { mutate: login, isPending } = useLogin();
-const { register, handleSubmit } = useForm<LoginCredentials>();
+// Form setup
+const { mutate: login, isPending, error } = useLogin();
+const { register, handleSubmit, formState: { errors } } = useForm<LoginCredentials>({
+  resolver: zodResolver(loginSchema),
+});
 
-const onSubmit = (data) => login(data);
+// Validation schema
+const loginSchema = z.object({
+  email: z.string().min(1, 'Email is required').email('Invalid email address'),
+  password: z.string().min(1, 'Password is required'),
+});
+
+// Password visibility toggle
+const [showPassword, setShowPassword] = useState(false);
+<IconButton onClick={() => setShowPassword(!showPassword)} disableRipple disableFocusRipple>
+  {showPassword ? <VisibilityOff /> : <Visibility />}
+</IconButton>
 ```
+
+**Centering forms:**
+```typescript
+<Box sx={{
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  position: 'fixed',
+  top: 0, left: 0, right: 0, bottom: 0,
+  overflow: 'auto',  // Responsive scrolling
+}}>
+```
+
+**Key lessons:**
+- Password visibility toggle: `disableRipple` + `disableFocusRipple` + transparent backgrounds removes ugly circle
+- Form centering: `position: fixed` with viewport coverage prevents CSS conflicts
+- Exact label matching in tests: `screen.getByLabelText('Password')` not regex (avoids multiple matches with toggle button)
+- Chained Zod validation: `.min(1, 'Required').min(6, 'Too short')` for different error messages
 
 ---
 
-### [TODO] 7. Routing + Protected Routes
-**Files:** `App.tsx` (React Router), `shared/components/ProtectedRoute.tsx`
-**Routes:**
-- `/login` - LoginPage
-- `/register` - RegisterPage
-- `/dashboard` - DashboardPage (protected)
+### [DONE] 7. Protected Routes
+**Files:** `shared/components/ProtectedRoute.tsx`, `PublicRoute.tsx`
+**Tests:** 4 passing (2 + 2)
 
-**Protected route pattern:**
+**ProtectedRoute** - Guards authenticated pages:
 ```typescript
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? children : <Navigate to="/login" />;
+export const ProtectedRoute = ({ children }) => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  return <>{children}</>;
 };
+
+// Usage in App.tsx
+<Route path="/todos" element={
+  <ProtectedRoute><TodosPage /></ProtectedRoute>
+} />
 ```
+
+**PublicRoute** - Redirects authenticated users from auth pages:
+```typescript
+export const PublicRoute = ({ children }) => {
+  const { user } = useAuth();
+  if (user) return <Navigate to="/todos" replace />;
+  return <>{children}</>;
+};
+
+// Usage in App.tsx
+<Route path="/login" element={
+  <PublicRoute><LoginPage /></PublicRoute>
+} />
+```
+
+**Routing setup:**
+- `/login`, `/register`, `/forgot-password` → PublicRoute (redirect to `/todos` if logged in)
+- `/reset-password` → No guard (public link from email)
+- `/todos` → ProtectedRoute (redirect to `/login` if not authenticated)
+- `/` → Redirect to `/login`
+
+---
+
+### [DONE] 8. CI/CD Pipeline
+**File:** `.github/workflows/test.yml`
+**Jobs:** `backend-tests` + `frontend-tests` (parallel execution)
+
+**Frontend job:**
+```yaml
+frontend-tests:
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    - run: npm ci
+      working-directory: ./frontend
+    - run: npm test -- --run
+      working-directory: ./frontend
+    - run: npm run build
+      working-directory: ./frontend
+```
+
+**Key benefit:** Both BE and FE tests run in parallel. PRs can't merge if tests fail.
+
+---
+
+### [NEXT] 9. Todo CRUD Features
+**Planned:** Todo list, create, update, delete, filters
+**Pattern:** Same as auth (API → Hooks → Components with TDD)
 
 ---
 
@@ -670,42 +776,66 @@ it('should handle API errors', async () => {
     - Create fresh QueryClient per test (isolation)
     - Return mocks from wrapper for assertions
 
+### UI & UX Patterns
+12. **Password visibility toggles:**
+    - Use MUI IconButton with Visibility/VisibilityOff icons
+    - `disableRipple` + `disableFocusRipple` + transparent sx removes ugly focus circle
+    - Separate state for each password field (don't share toggles)
+
+13. **Form centering:**
+    - `position: fixed` with full viewport (`top: 0, left: 0, right: 0, bottom: 0`)
+    - Prevents CSS conflicts from global styles
+    - Add `overflow: 'auto'` for responsive scrolling
+
+14. **Test selector specificity:**
+    - Use exact strings for labels: `getByLabelText('Password')` not `/password/i`
+    - Regex matching breaks when multiple elements match (button + input)
+
+15. **Error message UX:**
+    - Transform backend errors in apiClient interceptor
+    - Show meaningful messages ("User already exists") not HTTP codes ("Request failed with status 400")
+    - Fallback to generic message for network errors
+
+### CI/CD Best Practices
+16. **Add tests to CI early:**
+    - Don't wait until "code is stable"
+    - 92 tests is substantial - protect with CI now
+    - Parallel jobs (backend-tests + frontend-tests) for speed
+    - Include build step to catch TypeScript errors
+
 ---
 
-## 🎉 Phase 1 Complete: API & Hooks Layer (Infrastructure + Business Logic)
+## 🎉 Phase 2 Complete: Authentication System (Full Stack)
 
 ### What We Built:
-✅ **34 tests passing** across 7 test files
-✅ **Infrastructure:** apiClient, authApi, AuthContext
-✅ **Business Logic:** useLogin, useRegister, useForgotPassword, useResetPassword
-✅ **TDD Workflow:** Practiced RED → GREEN → REFACTOR for all hooks
-✅ **Testing Patterns:** Established reusable patterns for future features
+✅ **92 tests passing** across 13 test files
+✅ **Infrastructure:** apiClient (with error handling), authApi, AuthContext
+✅ **Business Logic:** 4 auth hooks (login, register, forgot/reset password)
+✅ **UI Components:** 4 forms with validation, error display, password toggles
+✅ **Route Guards:** ProtectedRoute, PublicRoute
+✅ **CI/CD:** GitHub Actions running both BE + FE tests in parallel
 
 ### Architecture Achieved:
 ```
 [Backend API]
     ↓
-[apiClient] ← axios instance with interceptors
+[apiClient] ← axios + interceptors + error transformation
     ↓
 [authApi] ← pure HTTP functions
     ↓
-[Auth Hooks] ← React Query mutations + AuthContext integration
+[Auth Hooks] ← React Query mutations + AuthContext
     ↓
-[Components] ← Next phase (UI layer)
+[Auth Forms] ← React Hook Form + Zod + MUI
+    ↓
+[Route Guards] ← ProtectedRoute/PublicRoute
 ```
 
-### What's Next: Phase 2 - UI Components Layer
-Now we build the visible UI that consumes our tested hooks:
-1. LoginForm (uses useLogin hook)
-2. RegisterForm (uses useRegister hook)
-3. ForgotPasswordForm (uses useForgotPassword hook)
-4. ResetPasswordForm (uses useResetPassword hook)
-
-**Testing approach for components:**
-- Test user interactions (type, click, submit)
-- Test form validation
-- Test loading/error states display
-- Mock hooks (not API directly)
+### What's Next: Phase 3 - Todo Features
+Build todo CRUD functionality following same pattern:
+1. Todo API layer (todosApi.ts)
+2. Todo hooks (useTodos, useCreateTodo, useUpdateTodo, useDeleteTodo)
+3. Todo components (TodoList, TodoItem, TodoForm)
+4. Wire to protected routes
 
 ---
 
