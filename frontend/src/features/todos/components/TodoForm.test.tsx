@@ -116,7 +116,6 @@ describe('TodoForm', () => {
 
   it('should disable submit button while submitting', async () => {
     // ARRANGE
-    const user = userEvent.setup();
     const mockOnSubmit = vi.fn(() => new Promise((resolve) => setTimeout(resolve, 100)));
 
     render(<TodoForm onSubmit={mockOnSubmit} isSubmitting={true} />);

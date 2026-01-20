@@ -1,4 +1,4 @@
-import { Container, Typography, Paper, Box, CircularProgress, Alert } from '@mui/material';
+import { Container, Typography, Paper, CircularProgress, Alert } from '@mui/material';
 import { TodoForm } from '@/features/todos/components/TodoForm';
 import { TodoList } from '@/features/todos/components/TodoList';
 import { useTodos } from '@/features/todos/hooks/useTodos';
