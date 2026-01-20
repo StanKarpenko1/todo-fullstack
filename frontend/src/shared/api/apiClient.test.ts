@@ -97,12 +97,90 @@ describe('apiClient', () => {
     };
 
     // ACT & ASSERT
-    await expect(responseInterceptor(mockError as AxiosError)).rejects.toEqual(mockError);
+    await expect(responseInterceptor(mockError as AxiosError)).rejects.toThrow();
 
     // Verify token removed
     expect(localStorage.getItem('token')).toBeNull();
 
     // Verify redirect
     expect(window.location.href).toBe('/login');
+  });
+
+  it('should transform API error with response.data.error message', async () => {
+    // ARRANGE
+    const responseInterceptor = vi.mocked(apiClient.interceptors.response.use).mock.calls[0]?.[1];
+    if (!responseInterceptor) throw new Error('Response error interceptor not found');
+
+    const mockError: Partial<AxiosError> = {
+      response: {
+        status: 400,
+        data: { error: 'User already exists with this email' },
+        statusText: 'Bad Request',
+        headers: {},
+        config: {} as any,
+      },
+    };
+
+    // ACT & ASSERT
+    await expect(responseInterceptor(mockError as AxiosError)).rejects.toThrow(
+      'User already exists with this email'
+    );
+  });
+
+  it('should transform API error with response.data.message', async () => {
+    // ARRANGE
+    const responseInterceptor = vi.mocked(apiClient.interceptors.response.use).mock.calls[0]?.[1];
+    if (!responseInterceptor) throw new Error('Response error interceptor not found');
+
+    const mockError: Partial<AxiosError> = {
+      response: {
+        status: 500,
+        data: { message: 'Database connection failed' },
+        statusText: 'Internal Server Error',
+        headers: {},
+        config: {} as any,
+      },
+    };
+
+    // ACT & ASSERT
+    await expect(responseInterceptor(mockError as AxiosError)).rejects.toThrow(
+      'Database connection failed'
+    );
+  });
+
+  it('should use generic error message when no specific message available', async () => {
+    // ARRANGE
+    const responseInterceptor = vi.mocked(apiClient.interceptors.response.use).mock.calls[0]?.[1];
+    if (!responseInterceptor) throw new Error('Response error interceptor not found');
+
+    const mockError: Partial<AxiosError> = {
+      response: {
+        status: 500,
+        data: {},
+        statusText: 'Internal Server Error',
+        headers: {},
+        config: {} as any,
+      },
+    };
+
+    // ACT & ASSERT
+    await expect(responseInterceptor(mockError as AxiosError)).rejects.toThrow(
+      'Something went wrong. Please try again.'
+    );
+  });
+
+  it('should use generic error message when no response available', async () => {
+    // ARRANGE
+    const responseInterceptor = vi.mocked(apiClient.interceptors.response.use).mock.calls[0]?.[1];
+    if (!responseInterceptor) throw new Error('Response error interceptor not found');
+
+    const mockError: Partial<AxiosError> = {
+      message: 'Network Error',
+    };
+
+    // ACT & ASSERT
+    await expect(responseInterceptor(mockError as AxiosError)).rejects.toThrow(
+      'Something went wrong. Please try again.'
+    );
   });
 });

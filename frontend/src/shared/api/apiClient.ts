@@ -20,14 +20,26 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor - handle 401 errors
+// Response interceptor - handle errors and transform messages
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Handle 401 - unauthorized
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       window.location.href = '/login';
     }
-    return Promise.reject(error);
+
+    // Extract meaningful error message
+    let errorMessage = 'Something went wrong. Please try again.';
+
+    if (error.response?.data?.error) {
+      errorMessage = error.response.data.error;
+    } else if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    }
+
+    // Throw clean Error object with meaningful message
+    return Promise.reject(new Error(errorMessage));
   }
 );
