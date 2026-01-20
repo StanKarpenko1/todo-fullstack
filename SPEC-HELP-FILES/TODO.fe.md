@@ -264,28 +264,23 @@ frontend/
 
 ## Implementation Progress
 
-### **Test Summary: 92 tests passing**
+### **Test Summary: 169 tests passing**
 
 **Infrastructure Layer (19 tests):**
-- ✅ API Client: 8 tests (added error message transformation)
+- ✅ API Client: 8 tests (error message transformation)
 - ✅ Auth API Layer: 6 tests
 - ✅ AuthContext: 5 tests
 
-**Business Logic Layer - Auth Hooks (19 tests):**
-- ✅ useLogin: 4 tests
-- ✅ useRegister: 4 tests
-- ✅ useForgotPassword: 5 tests
-- ✅ useResetPassword: 6 tests
+**Auth Feature (73 tests):**
+- ✅ Auth Hooks: 19 tests (useLogin, useRegister, useForgotPassword, useResetPassword)
+- ✅ Auth Components: 50 tests (LoginForm, RegisterForm, ForgotPasswordForm, ResetPasswordForm)
+- ✅ Route Guards: 4 tests (ProtectedRoute, PublicRoute)
 
-**UI Components Layer (50 tests):**
-- ✅ LoginForm: 13 tests (includes password visibility toggle)
-- ✅ RegisterForm: 13 tests (includes password visibility toggle)
-- ✅ ForgotPasswordForm: 10 tests
-- ✅ ResetPasswordForm: 14 tests (2 password fields with toggles)
-
-**Route Guards (4 tests):**
-- ✅ ProtectedRoute: 2 tests
-- ✅ PublicRoute: 2 tests
+**Todo Feature (77 tests):**
+- ✅ Todo API Layer: 10 tests (getTodos, getTodoById, createTodo, updateTodo, deleteTodo)
+- ✅ Todo Hooks: 24 tests (useTodos, useCreateTodo, useUpdateTodo, useDeleteTodo)
+- ✅ Todo Components: 27 tests (TodoItem, TodoList, TodoForm)
+- ✅ TodosPage: 16 tests (integration, layout, logout)
 
 ---
 
@@ -560,9 +555,353 @@ frontend-tests:
 
 ---
 
-### [NEXT] 9. Todo CRUD Features
-**Planned:** Todo list, create, update, delete, filters
-**Pattern:** Same as auth (API → Hooks → Components with TDD)
+### [DONE] 9. Todo CRUD Features
+**Files:** `features/todos/` - Complete CRUD implementation
+**Tests:** 77 passing (10 API + 24 hooks + 27 components + 16 page)
+**Pattern:** Followed exact same sequence as auth - proved architecture is reusable
+
+---
+
+## HOW We Built Todo CRUD (The Process)
+
+**This section documents the SEQUENCE OF ACTIONS - the "how", not the "what"**
+
+### Step 1: Analyze Backend Contract First
+**Before writing any code**, understand what the backend provides:
+
+```bash
+# Read backend files to understand API contract
+- backend/src/routers/todos.ts → See available endpoints
+- backend/src/controllers/todos.controller.ts → See request/response formats
+```
+
+**Key findings:**
+- 5 endpoints: GET all, GET by id, POST, PUT, DELETE
+- All require authentication (token in header)
+- Backend filters todos by userId automatically
+- Response format: `{ message, todos }` or `{ message, todo }`
+
+**Why this matters:** Types must match backend exactly, API functions know the contract.
+
+---
+
+### Step 2: Create Types (Data Structure)
+**File:** `features/todos/types/todo.types.ts`
+**Action:** Define TypeScript interfaces matching backend Prisma model
+
+```typescript
+// Core entity (matches backend)
+interface Todo {
+  id: string;
+  title: string;
+  description: string | null;
+  completed: boolean;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// DTOs for mutations
+interface CreateTodoData { title: string; description?: string; }
+interface UpdateTodoData { title?: string; description?: string; completed?: boolean; }
+
+// API response types (matches backend controllers)
+interface TodosResponse { message: string; todos: Todo[]; }
+interface TodoResponse { message: string; todo: Todo; }
+interface DeleteTodoResponse { message: string; }
+```
+
+**Why first:** Types inform everything else. If you know the shape, you can build with confidence.
+
+---
+
+### Step 3: Build API Layer (TDD)
+**Files:** `features/todos/api/todosApi.test.ts` → `todosApi.ts`
+**Tests:** 10 passing (2 per function)
+**Pattern:** Test first, implement second
+
+**Sequence:**
+1. Write test for `getTodos()` - verify it calls `apiClient.get('/todos')` and returns array
+2. Implement `getTodos()` - simple wrapper around apiClient
+3. Repeat for `getTodoById()`, `createTodo()`, `updateTodo()`, `deleteTodo()`
+4. Run all tests - verify API layer works
+
+**Key pattern:**
+```typescript
+export const getTodos = async (): Promise<Todo[]> => {
+  const response = await apiClient.get<TodosResponse>('/todos');
+  return response.data.todos; // Unwrap backend response
+};
+```
+
+**Common mistake caught by tests:**
+- ❌ Default import: `import apiClient from '@/shared/api/apiClient'`
+- ✅ Named import: `import { apiClient } from '@/shared/api/apiClient'`
+
+---
+
+### Step 4: Build React Query Hooks (TDD)
+**Files:** 4 hooks, each with test file first
+**Tests:** 24 passing (5-7 tests per hook)
+**Pattern:** Test → Implement → Verify → Next hook
+
+**Sequence for each hook:**
+
+#### A. useTodos (Query Hook)
+1. Write test file: `useTodos.test.tsx`
+   - Test: Fetch todos successfully
+   - Test: Return empty array when no todos
+   - Test: Show loading state
+   - Test: Handle errors
+   - Test: Use correct query key
+2. Implement: `useTodos.ts`
+   ```typescript
+   export const useTodos = () => {
+     return useQuery({
+       queryKey: ['todos'],
+       queryFn: getTodos,
+     });
+   };
+   ```
+3. Run tests - all 5 passing
+4. Move to next hook
+
+#### B. useCreateTodo (Mutation Hook)
+1. Write test file: `useCreateTodo.test.tsx`
+   - Test: Call API on mutation
+   - Test: Return created todo
+   - Test: Invalidate cache on success (important!)
+   - Test: Handle loading state
+   - Test: Handle errors
+   - Test: Work without description
+2. Implement: `useCreateTodo.ts`
+   ```typescript
+   export const useCreateTodo = () => {
+     const queryClient = useQueryClient();
+     return useMutation({
+       mutationFn: createTodo,
+       onSuccess: () => {
+         queryClient.invalidateQueries({ queryKey: ['todos'] }); // Auto-refresh
+       },
+     });
+   };
+   ```
+3. Run tests - all 6 passing
+
+#### C. useUpdateTodo (Mutation Hook)
+- Same TDD pattern as create
+- Tests include toggling completion status
+- Tests multiple field updates
+- 7 tests passing
+
+#### D. useDeleteTodo (Mutation Hook)
+- Same TDD pattern
+- Tests sequential deletions
+- 6 tests passing
+
+**Why this order:** Query hook first (read), then mutations (write). Each hook builds confidence.
+
+---
+
+### Step 5: Build UI Components (TDD)
+**Files:** 3 components, each with test file first
+**Tests:** 27 passing (10 + 7 + 10)
+**Pattern:** Test → Implement → Verify → Next component
+
+**Sequence:**
+
+#### A. TodoItem (Smallest Component First)
+1. Write test file: `TodoItem.test.tsx`
+   - Test: Render title and description
+   - Test: Render without description
+   - Test: Checkbox state (checked/unchecked)
+   - Test: Call onToggle when checkbox clicked
+   - Test: Call onDelete when delete button clicked
+   - Test: Strikethrough style for completed todos
+   - Test: Delete button renders
+2. Implement: `TodoItem.tsx`
+   ```typescript
+   <ListItem secondaryAction={<IconButton onClick={() => onDelete(todo.id)}><DeleteIcon /></IconButton>}>
+     <Checkbox checked={todo.completed} onChange={(e) => onToggle(todo.id, e.target.checked)} />
+     <ListItemText
+       primary={<Typography sx={{ textDecoration: todo.completed ? 'line-through' : 'none' }}>{todo.title}</Typography>}
+       secondary={todo.description}
+     />
+   </ListItem>
+   ```
+3. Run tests - all 10 passing
+
+#### B. TodoList (Container Component)
+1. Write test file: `TodoList.test.tsx`
+   - Mock TodoItem component (simplify testing)
+   - Test: Render list of todos
+   - Test: Empty state message
+   - Test: Pass handlers to children
+   - Test: Correct number of items
+2. Implement: `TodoList.tsx`
+   ```typescript
+   if (todos.length === 0) return <EmptyState />;
+   return <List>{todos.map(todo => <TodoItem key={todo.id} ... />)}</List>;
+   ```
+3. Run tests - all 7 passing
+
+#### C. TodoForm (Form Component)
+1. Write test file: `TodoForm.test.tsx`
+   - Test: Render fields
+   - Test: Submit with data
+   - Test: Submit with only title
+   - Test: Validation errors (empty title, too short)
+   - Test: Clear form after success
+   - Test: Disable during submission
+   - Test: Typing in fields works
+2. Implement: `TodoForm.tsx`
+   ```typescript
+   const todoSchema = z.object({
+     title: z.string().min(1, 'Title is required').min(3, 'Title must be at least 3 characters'),
+     description: z.string().optional(),
+   });
+
+   // React Hook Form + Zod
+   const { register, handleSubmit, formState: { errors }, reset } = useForm<CreateTodoData>({
+     resolver: zodResolver(todoSchema),
+   });
+   ```
+3. Run tests - all 10 passing
+
+**Common issue caught:** Zod chaining - `.min(1).min(3)` shows the second error when length is 0
+
+---
+
+### Step 6: Build Page Integration
+**File:** `pages/TodosPage/TodosPage.tsx` + test
+**Tests:** 16 passing
+**Action:** Wire all pieces together
+
+**Implementation sequence:**
+1. Import all hooks and components
+2. Call hooks at component top level
+3. Create handler functions that call mutations
+4. Handle loading state (show spinner)
+5. Handle error state (show error message)
+6. Render main content with handlers passed down
+7. Show mutation errors at bottom
+
+**Critical fix applied - CENTERING ISSUE:**
+Same problem as LoginPage - content not centered. Applied same fix:
+```typescript
+<Box
+  data-testid="todos-page-container"
+  sx={{
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: '100vh',
+    width: '100%',
+    position: 'fixed',
+    top: 0, left: 0, right: 0, bottom: 0,
+    bgcolor: 'background.default',
+    overflow: 'auto',
+  }}
+>
+  <Container maxWidth="md">{/* content */}</Container>
+</Box>
+```
+
+**Added logout button:**
+```typescript
+<Box sx={{ position: 'absolute', top: 16, right: 16 }}>
+  <Button variant="contained" onClick={handleLogout}>Logout</Button>
+</Box>
+```
+
+**Tests cover:**
+- Layout centering (3 tests)
+- Logout button (2 tests)
+- Content rendering (3 tests)
+- Loading state (2 tests)
+- Error state (2 tests)
+- Todo operations (4 tests)
+
+---
+
+### Step 7: Run Full Test Suite
+```bash
+npm test
+```
+
+**Result:** 169 tests passing
+- Auth: 92 tests (from previous phase)
+- Todos: 77 tests (new)
+  - API layer: 10 tests
+  - Hooks layer: 24 tests
+  - Components: 27 tests
+  - Page: 16 tests
+
+**What success means:** Every layer tested independently and integration tested.
+
+---
+
+## The Proven Process (Reusable Steps for Any Feature)
+
+### Phase 1: Foundation
+1. ✅ **Analyze backend contract** - Read routes + controllers
+2. ✅ **Create types** - Match backend exactly
+3. ✅ **Build API layer with tests** - Pure HTTP functions
+4. ✅ **Verify API tests pass** - Ensure contract is correct
+
+### Phase 2: Business Logic
+5. ✅ **Build query hooks with tests** - Read operations (useQuery)
+6. ✅ **Build mutation hooks with tests** - Write operations (useMutation)
+7. ✅ **Verify all hooks pass** - Ensure React Query integration works
+
+### Phase 3: UI
+8. ✅ **Build small components with tests** - Start with leaves (TodoItem)
+9. ✅ **Build container components with tests** - Move up tree (TodoList)
+10. ✅ **Build form components with tests** - Handle user input (TodoForm)
+11. ✅ **Verify all component tests pass** - Ensure UI works in isolation
+
+### Phase 4: Integration
+12. ✅ **Build page component** - Wire hooks + components together
+13. ✅ **Add page tests** - Test integration and layout
+14. ✅ **Apply common patterns** - Centering, logout, error handling
+15. ✅ **Run full test suite** - Verify nothing broke
+
+### Phase 5: Verification
+16. ✅ **Manual testing** - Actually use the feature
+17. ✅ **Check CI/CD** - Ensure tests run in pipeline
+18. ✅ **Update documentation** - Record what you learned
+
+---
+
+## Critical Lessons from Todo Implementation
+
+### What Worked (Do This)
+1. **Exact same pattern as auth** - Proved architecture is reusable
+2. **TDD throughout** - Caught import errors, validation bugs, integration issues
+3. **Incremental layers** - Each layer validates before moving up
+4. **Test counts as progress metric** - 153 → 169 tests = visible progress
+5. **Colocated tests** - Easy to find and maintain
+
+### What Needed Fixing (Watch For)
+6. **Centering consistency** - Use EXACT same Box pattern as LoginPage for all full-page layouts
+7. **Named exports** - `import { apiClient }` not `import apiClient` (caught by tests)
+8. **Zod validation order** - `.min(1).min(3)` shows second message only when > 0 length
+9. **Cache invalidation** - MUST invalidate queries after mutations (or UI doesn't update)
+10. **Button styling consistency** - Use same variant for similar actions (logout = contained, like submit buttons)
+
+### Process Improvements Discovered
+11. **Backend first** - Always analyze API contract before writing types
+12. **Types inform API** - Types make API layer obvious to implement
+13. **API informs hooks** - API layer makes hooks straightforward
+14. **Hooks inform components** - Components just consume what hooks provide
+15. **Components inform page** - Page just wires components together
+
+### Time Savers
+16. **Mock components in integration tests** - TodoList test mocked TodoItem (faster, simpler)
+17. **Wrapper pattern** - Reuse QueryClientProvider wrapper across all hook tests
+18. **Common test data** - Define mock todos once, reuse everywhere
+19. **AAA pattern** - Makes tests instantly readable
+20. **Run tests frequently** - Catch issues immediately, not after writing 100 lines
 
 ---
 
@@ -805,7 +1144,7 @@ it('should handle API errors', async () => {
 
 ---
 
-## 🎉 Phase 2 Complete: Authentication System (Full Stack)
+## 🎉 Phase 2 Complete: Authentication System
 
 ### What We Built:
 ✅ **92 tests passing** across 13 test files
@@ -815,27 +1154,81 @@ it('should handle API errors', async () => {
 ✅ **Route Guards:** ProtectedRoute, PublicRoute
 ✅ **CI/CD:** GitHub Actions running both BE + FE tests in parallel
 
-### Architecture Achieved:
+---
+
+## 🎉 Phase 3 Complete: Todo CRUD Features
+
+### What We Built:
+✅ **169 tests passing** total (92 auth + 77 todos)
+✅ **Todo API Layer:** 5 functions (getTodos, getTodoById, createTodo, updateTodo, deleteTodo) - 10 tests
+✅ **Todo Hooks:** 4 hooks (useTodos, useCreateTodo, useUpdateTodo, useDeleteTodo) - 24 tests
+✅ **Todo Components:** 3 components (TodoItem, TodoList, TodoForm) - 27 tests
+✅ **TodosPage:** Full integration with centering, logout button - 16 tests
+✅ **Proven Architecture:** Same pattern as auth worked perfectly
+
+### Final Architecture:
 ```
-[Backend API]
+[Backend API] ← Express + Prisma
     ↓
 [apiClient] ← axios + interceptors + error transformation
     ↓
-[authApi] ← pure HTTP functions
+[Feature APIs] ← authApi, todosApi (pure HTTP functions)
     ↓
-[Auth Hooks] ← React Query mutations + AuthContext
+[Feature Hooks] ← React Query (useQuery + useMutation)
     ↓
-[Auth Forms] ← React Hook Form + Zod + MUI
+[Feature Components] ← React Hook Form + Zod + MUI
+    ↓
+[Pages] ← Integration layer (wires hooks + components)
     ↓
 [Route Guards] ← ProtectedRoute/PublicRoute
+    ↓
+[App.tsx] ← Routing + AuthProvider + QueryClientProvider
 ```
 
-### What's Next: Phase 3 - Todo Features
-Build todo CRUD functionality following same pattern:
-1. Todo API layer (todosApi.ts)
-2. Todo hooks (useTodos, useCreateTodo, useUpdateTodo, useDeleteTodo)
-3. Todo components (TodoList, TodoItem, TodoForm)
-4. Wire to protected routes
+### What We Proved:
+1. **Architecture is reusable** - Same pattern worked for both auth and todos
+2. **TDD is valuable** - Caught bugs early, gave confidence to refactor
+3. **Layered approach scales** - Types → API → Hooks → Components → Page
+4. **Tests as documentation** - 169 tests show exactly what the app does
+5. **Process is teachable** - Follow the steps, get predictable results
+
+### What's Next: Phase 4 - Deployment
+1. Containerize frontend (Docker)
+2. Configure production build
+3. Deploy to cloud (optional)
+4. Monitor in production
+
+---
+
+## Next Session Plan
+
+### Goals for Follow-up Session:
+1. **Learn from this documentation** - Review the "HOW We Built Todo CRUD" section to understand:
+   - The sequence of actions (backend analysis → types → API → hooks → components → page)
+   - Why we do things in this order
+   - What patterns are reusable for any feature
+   - What mistakes to avoid
+
+2. **Containerize Frontend** - Wrap FE into Docker container:
+   - Create Dockerfile for production build
+   - Configure nginx to serve static files
+   - Set up multi-stage build for optimization
+   - Test container locally
+   - Update docker-compose to include frontend service
+
+### Key Takeaways to Remember:
+- **Process > Code** - The HOW matters more than the WHAT
+- **Layers from bottom up** - Types → API → Hooks → Components → Page
+- **TDD throughout** - Tests first, implementation second
+- **Incremental validation** - Run tests after each layer
+- **Patterns proven** - Same approach worked for auth and todos, will work for future features
+
+### Success Metrics:
+- ✅ 169 tests passing (100% of features tested)
+- ✅ Clean separation of concerns (types, API, hooks, components, pages)
+- ✅ Reusable architecture (proven with 2 features)
+- ✅ Documented process (this file serves as guide)
+- ⏳ Containerized deployment (next step)
 
 ---
 
