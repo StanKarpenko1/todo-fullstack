@@ -1,20 +1,21 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { RegisterForm } from './RegisterForm';
-import { useRegister } from '../hooks/useRegister';
+import { LoginForm } from '../components/LoginForm';
+import { useLogin } from '../hooks/useLogin';
+// import { type ReactNode } from 'react';
 
-// Mock the useRegister hook
-vi.mock('../hooks/useRegister');
+// Mock the useLogin hook
+vi.mock('../hooks/useLogin');
 
-describe('RegisterForm', () => {
+describe('LoginForm', () => {
   const mockMutate = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
 
     // Default mock - successful state
-    vi.mocked(useRegister).mockReturnValue({
+    vi.mocked(useLogin).mockReturnValue({
       mutate: mockMutate,
       isPending: false,
       isError: false,
@@ -34,91 +35,71 @@ describe('RegisterForm', () => {
     } as any);
   });
 
-  it('should render name, email and password fields', () => {
-    render(<RegisterForm />);
+  it('should render email and password fields', () => {
+    render(<LoginForm />);
 
-    expect(screen.getByLabelText('Name')).toBeInTheDocument();
     expect(screen.getByLabelText('Email')).toBeInTheDocument();
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
   });
 
-  it('should render register button', () => {
-    render(<RegisterForm />);
+  it('should render login button', () => {
+    render(<LoginForm />);
 
-    expect(screen.getByRole('button', { name: /register/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument();
   });
 
-  it('should render login link', () => {
-    render(<RegisterForm />);
+  it('should render navigation links', () => {
+    render(<LoginForm />);
 
-    expect(screen.getByText(/already have an account/i)).toBeInTheDocument();
+    expect(screen.getByText(/don't have an account/i)).toBeInTheDocument();
+    expect(screen.getByText(/forgot password/i)).toBeInTheDocument();
   });
 
-  it('should call register mutation on form submit with valid data', async () => {
+  it('should call login mutation on form submit with valid data', async () => {
     const user = userEvent.setup();
-    render(<RegisterForm />);
+    render(<LoginForm />);
 
     // Fill form
-    await user.type(screen.getByLabelText('Name'), 'Test User');
     await user.type(screen.getByLabelText('Email'), 'test@example.com');
     await user.type(screen.getByLabelText('Password'), 'password123');
 
     // Submit form
-    await user.click(screen.getByRole('button', { name: /register/i }));
+    await user.click(screen.getByRole('button', { name: /login/i }));
 
     // Assert mutation called with form data
     await waitFor(() => {
       expect(mockMutate).toHaveBeenCalledWith({
-        name: 'Test User',
         email: 'test@example.com',
         password: 'password123',
       });
     });
   });
 
-  it('should show validation error for empty name', async () => {
-    const user = userEvent.setup();
-    render(<RegisterForm />);
-
-    // Submit without name
-    await user.type(screen.getByLabelText('Email'), 'test@example.com');
-    await user.type(screen.getByLabelText('Password'), 'password123');
-    await user.click(screen.getByRole('button', { name: /register/i }));
-
-    // Should show validation error
-    await waitFor(() => {
-      expect(screen.getByText(/name is required/i)).toBeInTheDocument();
-    });
-
-    expect(mockMutate).not.toHaveBeenCalled();
-  });
-
   it('should show validation error for empty email', async () => {
     const user = userEvent.setup();
-    render(<RegisterForm />);
+    render(<LoginForm />);
 
-    // Submit without email
-    await user.type(screen.getByLabelText('Name'), 'Test User');
+    // Submit without filling email
     await user.type(screen.getByLabelText('Password'), 'password123');
-    await user.click(screen.getByRole('button', { name: /register/i }));
+    await user.click(screen.getByRole('button', { name: /login/i }));
 
     // Should show validation error
     await waitFor(() => {
       expect(screen.getByText(/email is required/i)).toBeInTheDocument();
     });
 
+    // Should NOT call mutation
     expect(mockMutate).not.toHaveBeenCalled();
   });
 
   it('should show validation error for invalid email format', async () => {
     const user = userEvent.setup();
-    render(<RegisterForm />);
+    render(<LoginForm />);
 
     // Type invalid email
-    await user.type(screen.getByLabelText('Name'), 'Test User');
     await user.type(screen.getByLabelText('Email'), 'invalid-email');
     await user.type(screen.getByLabelText('Password'), 'password123');
-    await user.click(screen.getByRole('button', { name: /register/i }));
+    await user.click(screen.getByRole('button', { name: /login/i }));
 
     // Should show validation error
     await waitFor(() => {
@@ -130,12 +111,11 @@ describe('RegisterForm', () => {
 
   it('should show validation error for empty password', async () => {
     const user = userEvent.setup();
-    render(<RegisterForm />);
+    render(<LoginForm />);
 
     // Submit without password
-    await user.type(screen.getByLabelText('Name'), 'Test User');
     await user.type(screen.getByLabelText('Email'), 'test@example.com');
-    await user.click(screen.getByRole('button', { name: /register/i }));
+    await user.click(screen.getByRole('button', { name: /login/i }));
 
     // Should show validation error
     await waitFor(() => {
@@ -145,27 +125,9 @@ describe('RegisterForm', () => {
     expect(mockMutate).not.toHaveBeenCalled();
   });
 
-  it('should show validation error for short password', async () => {
-    const user = userEvent.setup();
-    render(<RegisterForm />);
-
-    // Submit with short password
-    await user.type(screen.getByLabelText('Name'), 'Test User');
-    await user.type(screen.getByLabelText('Email'), 'test@example.com');
-    await user.type(screen.getByLabelText('Password'), '123');
-    await user.click(screen.getByRole('button', { name: /register/i }));
-
-    // Should show validation error
-    await waitFor(() => {
-      expect(screen.getByText(/password must be at least 6 characters/i)).toBeInTheDocument();
-    });
-
-    expect(mockMutate).not.toHaveBeenCalled();
-  });
-
   it('should disable form and show loading state when submitting', () => {
     // Mock pending state
-    vi.mocked(useRegister).mockReturnValue({
+    vi.mocked(useLogin).mockReturnValue({
       mutate: mockMutate,
       isPending: true,
       isError: false,
@@ -184,20 +146,20 @@ describe('RegisterForm', () => {
       context: undefined,
     } as any);
 
-    render(<RegisterForm />);
+    render(<LoginForm />);
 
     // Button should show loading text
-    expect(screen.getByRole('button', { name: /creating account/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /logging in/i })).toBeInTheDocument();
 
     // Button should be disabled
-    expect(screen.getByRole('button', { name: /creating account/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /logging in/i })).toBeDisabled();
   });
 
-  it('should display error message when registration fails', () => {
-    const errorMessage = 'Email already exists';
+  it('should display error message when login fails', () => {
+    const errorMessage = 'Invalid email or password';
 
     // Mock error state
-    vi.mocked(useRegister).mockReturnValue({
+    vi.mocked(useLogin).mockReturnValue({
       mutate: mockMutate,
       isPending: false,
       isError: true,
@@ -216,24 +178,48 @@ describe('RegisterForm', () => {
       context: undefined,
     } as any);
 
-    render(<RegisterForm />);
+    render(<LoginForm />);
 
     // Should display error message
     expect(screen.getByText(errorMessage)).toBeInTheDocument();
   });
 
-  it('should render login link as anchor tag with correct href', () => {
-    render(<RegisterForm />);
+  it('should render form with centering layout', () => {
+    render(<LoginForm />);
 
-    const loginLink = screen.getByRole('link', { name: /login/i });
-    expect(loginLink).toBeInTheDocument();
-    expect(loginLink).toHaveAttribute('href', '/login');
-    expect(loginLink.tagName).toBe('A');
+    // Get the container
+    const container = screen.getByTestId('login-form-container');
+    expect(container).toBeInTheDocument();
+
+    // Check centering mechanism (position: fixed covering viewport + flex centering)
+    const styles = window.getComputedStyle(container);
+    expect(styles.position).toBe('fixed');
+    expect(styles.display).toBe('flex');
+    expect(styles.justifyContent).toBe('center');
+    expect(styles.alignItems).toBe('center');
+  });
+
+  it('should render register link as anchor tag with correct href', () => {
+    render(<LoginForm />);
+
+    const registerLink = screen.getByRole('link', { name: /register/i });
+    expect(registerLink).toBeInTheDocument();
+    expect(registerLink).toHaveAttribute('href', '/register');
+    expect(registerLink.tagName).toBe('A');
+  });
+
+  it('should render forgot password link as anchor tag with correct href', () => {
+    render(<LoginForm />);
+
+    const forgotPasswordLink = screen.getByRole('link', { name: /forgot password/i });
+    expect(forgotPasswordLink).toBeInTheDocument();
+    expect(forgotPasswordLink).toHaveAttribute('href', '/forgot-password');
+    expect(forgotPasswordLink.tagName).toBe('A');
   });
 
   it('should toggle password visibility when clicking visibility button', async () => {
     const user = userEvent.setup();
-    render(<RegisterForm />);
+    render(<LoginForm />);
 
     const passwordInput = screen.getByLabelText('Password');
     const toggleButton = screen.getByRole('button', { name: /toggle password visibility/i });

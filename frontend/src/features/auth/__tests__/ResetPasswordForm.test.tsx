@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
-import { ResetPasswordForm } from './ResetPasswordForm';
+import { ResetPasswordForm } from '../components/ResetPasswordForm';
 import { useResetPassword } from '../hooks/useResetPassword';
 
 // Mock the useResetPassword hook

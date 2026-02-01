@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { AuthProvider, useAuth } from './AuthContext';
+import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import type { User } from '@features/auth/types/auth.types';
 
 describe('AuthContext', () => {

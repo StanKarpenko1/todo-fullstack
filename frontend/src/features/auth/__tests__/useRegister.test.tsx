@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useLogin } from './useLogin';
-import { loginUser } from '../api/authApi';
+import { useRegister } from '../hooks/useRegister';
+import { registerUser } from '../api/authApi';
 import { useAuth } from '@/shared/contexts/AuthContext';
 import { type ReactNode } from 'react';
 
@@ -10,7 +10,7 @@ import { type ReactNode } from 'react';
 vi.mock('../api/authApi');
 vi.mock('@/shared/contexts/AuthContext');
 
-describe('useLogin', () => {
+describe('useRegister', () => {
   let queryClient: QueryClient;
 
   beforeEach(() => {
@@ -44,41 +44,49 @@ describe('useLogin', () => {
     };
   };
 
-  it('should call loginUser API on mutation', async () => {
+  it('should call registerUser API on mutation', async () => {
     // ARRANGE
     const { wrapper } = createWrapper();
-    const mockCredentials = { email: 'test@example.com', password: 'password123' };
+    const mockData = {
+      email: 'newuser@example.com',
+      password: 'password123',
+      name: 'New User'
+    };
     const mockResponse = {
       token: 'mock-token',
-      user: { id: '1', email: 'test@example.com', name: 'Test User' },
+      user: { id: '1', email: 'newuser@example.com', name: 'New User' },
     };
 
-    vi.mocked(loginUser).mockResolvedValue(mockResponse);
+    vi.mocked(registerUser).mockResolvedValue(mockResponse);
 
     // ACT
-    const { result } = renderHook(() => useLogin(), { wrapper });
-    result.current.mutate(mockCredentials);
+    const { result } = renderHook(() => useRegister(), { wrapper });
+    result.current.mutate(mockData);
 
     // ASSERT
     await waitFor(() => {
-      expect(loginUser).toHaveBeenCalledWith(mockCredentials);
+      expect(registerUser).toHaveBeenCalledWith(mockData);
     });
   });
 
-  it('should call AuthContext.login on success', async () => {
+  it('should call AuthContext.login on success (auto-login)', async () => {
     // ARRANGE
     const { wrapper, mockLogin } = createWrapper();
-    const mockCredentials = { email: 'test@example.com', password: 'password123' };
+    const mockData = {
+      email: 'newuser@example.com',
+      password: 'password123',
+      name: 'New User'
+    };
     const mockResponse = {
       token: 'mock-token',
-      user: { id: '1', email: 'test@example.com', name: 'Test User' },
+      user: { id: '1', email: 'newuser@example.com', name: 'New User' },
     };
 
-    vi.mocked(loginUser).mockResolvedValue(mockResponse);
+    vi.mocked(registerUser).mockResolvedValue(mockResponse);
 
     // ACT
-    const { result } = renderHook(() => useLogin(), { wrapper });
-    result.current.mutate(mockCredentials);
+    const { result } = renderHook(() => useRegister(), { wrapper });
+    result.current.mutate(mockData);
 
     // ASSERT
     await waitFor(() => {
@@ -89,18 +97,22 @@ describe('useLogin', () => {
   it('should return loading state during mutation', async () => {
     // ARRANGE
     const { wrapper } = createWrapper();
-    vi.mocked(loginUser).mockImplementation(
+    vi.mocked(registerUser).mockImplementation(
       () => new Promise((resolve) => setTimeout(resolve, 100))
     );
 
     // ACT
-    const { result } = renderHook(() => useLogin(), { wrapper });
+    const { result } = renderHook(() => useRegister(), { wrapper });
 
     // Initial state - not pending
     expect(result.current.isPending).toBe(false);
 
     // Trigger mutation
-    result.current.mutate({ email: 'test@example.com', password: 'password123' });
+    result.current.mutate({
+      email: 'newuser@example.com',
+      password: 'password123',
+      name: 'New User'
+    });
 
     // ASSERT - isPending should be true after mutation starts
     await waitFor(() => {
@@ -111,12 +123,16 @@ describe('useLogin', () => {
   it('should handle API errors', async () => {
     // ARRANGE
     const { wrapper } = createWrapper();
-    const mockError = new Error('Invalid credentials');
-    vi.mocked(loginUser).mockRejectedValue(mockError);
+    const mockError = new Error('Email already exists');
+    vi.mocked(registerUser).mockRejectedValue(mockError);
 
     // ACT
-    const { result } = renderHook(() => useLogin(), { wrapper });
-    result.current.mutate({ email: 'test@example.com', password: 'wrong' });
+    const { result } = renderHook(() => useRegister(), { wrapper });
+    result.current.mutate({
+      email: 'existing@example.com',
+      password: 'password123',
+      name: 'User'
+    });
 
     // ASSERT
     await waitFor(() => {

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { TodosPage } from './TodosPage';
+import { TodosPage } from '../TodosPage';
 import { useTodos } from '@/features/todos/hooks/useTodos';
 import { useCreateTodo } from '@/features/todos/hooks/useCreateTodo';
 import { useUpdateTodo } from '@/features/todos/hooks/useUpdateTodo';

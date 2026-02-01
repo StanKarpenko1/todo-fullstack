@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ForgotPasswordForm } from './ForgotPasswordForm';
+import { ForgotPasswordForm } from '../components/ForgotPasswordForm';
 import { useForgotPassword } from '../hooks/useForgotPassword';
 
 // Mock the useForgotPassword hook

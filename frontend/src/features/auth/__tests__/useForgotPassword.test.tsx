@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useForgotPassword } from './useForgotPassword';
+import { useForgotPassword } from '../hooks/useForgotPassword';
 import { forgotPassword } from '../api/authApi';
 import { type ReactNode } from 'react';
 

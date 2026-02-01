@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { loginUser, registerUser, forgotPassword, resetPassword } from './authApi';
+import { loginUser, registerUser, forgotPassword, resetPassword } from '../api/authApi';
 import { apiClient } from '@shared/api/apiClient';
 import type { LoginCredentials, RegisterData, AuthResponse } from '../types/auth.types';
 

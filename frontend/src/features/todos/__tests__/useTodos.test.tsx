@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useTodos } from './useTodos';
+import { useTodos } from '../hooks/useTodos';
 import { getTodos } from '../api/todosApi';
 import { type ReactNode } from 'react';
 import type { Todo } from '../types/todo.types';

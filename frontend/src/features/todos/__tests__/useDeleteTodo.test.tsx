@@ -1,21 +1,21 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useCreateTodo } from './useCreateTodo';
-import { createTodo } from '../api/todosApi';
+import { useDeleteTodo } from '../hooks/useDeleteTodo';
+import { deleteTodo } from '../api/todosApi';
 import { type ReactNode } from 'react';
-import type { Todo, CreateTodoData } from '../types/todo.types';
+import type { Todo } from '../types/todo.types';
 
 // Mock todosApi
 vi.mock('../api/todosApi');
 
-describe('useCreateTodo', () => {
+describe('useDeleteTodo', () => {
   let queryClient: QueryClient;
 
   const mockTodo: Todo = {
     id: '1',
-    title: 'New Todo',
-    description: 'New Description',
+    title: 'Todo to Delete',
+    description: 'This will be deleted',
     completed: false,
     userId: 'user-1',
     createdAt: '2024-01-01T00:00:00.000Z',
@@ -40,65 +40,52 @@ describe('useCreateTodo', () => {
     );
   };
 
-  it('should call createTodo API on mutation', async () => {
+  it('should call deleteTodo API on mutation', async () => {
     // ARRANGE
-    const newTodoData: CreateTodoData = {
-      title: 'New Todo',
-      description: 'New Description',
-    };
-    vi.mocked(createTodo).mockResolvedValue(mockTodo);
+    vi.mocked(deleteTodo).mockResolvedValue(undefined);
 
     // ACT
-    const { result } = renderHook(() => useCreateTodo(), {
+    const { result } = renderHook(() => useDeleteTodo(), {
       wrapper: createWrapper(),
     });
-    result.current.mutate(newTodoData);
+    result.current.mutate('1');
 
     // ASSERT
     await waitFor(() => {
-      expect(createTodo).toHaveBeenCalledWith(newTodoData);
+      expect(deleteTodo).toHaveBeenCalledWith('1');
     });
   });
 
-  it('should return created todo on success', async () => {
+  it('should successfully complete deletion', async () => {
     // ARRANGE
-    const newTodoData: CreateTodoData = {
-      title: 'New Todo',
-      description: 'New Description',
-    };
-    vi.mocked(createTodo).mockResolvedValue(mockTodo);
+    vi.mocked(deleteTodo).mockResolvedValue(undefined);
 
     // ACT
-    const { result } = renderHook(() => useCreateTodo(), {
+    const { result } = renderHook(() => useDeleteTodo(), {
       wrapper: createWrapper(),
     });
-    result.current.mutate(newTodoData);
+    result.current.mutate('1');
 
     // ASSERT
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
-
-    expect(result.current.data).toEqual(mockTodo);
   });
 
   it('should invalidate todos query on success', async () => {
     // ARRANGE
-    const newTodoData: CreateTodoData = {
-      title: 'New Todo',
-    };
-    vi.mocked(createTodo).mockResolvedValue(mockTodo);
+    vi.mocked(deleteTodo).mockResolvedValue(undefined);
 
     // Set up query cache with initial data
-    queryClient.setQueryData(['todos'], []);
+    queryClient.setQueryData(['todos'], [mockTodo]);
 
     const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
     // ACT
-    const { result } = renderHook(() => useCreateTodo(), {
+    const { result } = renderHook(() => useDeleteTodo(), {
       wrapper: createWrapper(),
     });
-    result.current.mutate(newTodoData);
+    result.current.mutate('1');
 
     // ASSERT
     await waitFor(() => {
@@ -110,12 +97,12 @@ describe('useCreateTodo', () => {
 
   it('should handle loading state during mutation', async () => {
     // ARRANGE
-    vi.mocked(createTodo).mockImplementation(
-      () => new Promise((resolve) => setTimeout(() => resolve(mockTodo), 100))
+    vi.mocked(deleteTodo).mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve(undefined), 100))
     );
 
     // ACT
-    const { result } = renderHook(() => useCreateTodo(), {
+    const { result } = renderHook(() => useDeleteTodo(), {
       wrapper: createWrapper(),
     });
 
@@ -123,7 +110,7 @@ describe('useCreateTodo', () => {
     expect(result.current.isPending).toBe(false);
 
     // Trigger mutation
-    result.current.mutate({ title: 'New Todo' });
+    result.current.mutate('1');
 
     // ASSERT - isPending should be true after mutation starts
     await waitFor(() => {
@@ -133,14 +120,14 @@ describe('useCreateTodo', () => {
 
   it('should handle API errors', async () => {
     // ARRANGE
-    const mockError = new Error('Failed to create todo');
-    vi.mocked(createTodo).mockRejectedValue(mockError);
+    const mockError = new Error('Failed to delete todo');
+    vi.mocked(deleteTodo).mockRejectedValue(mockError);
 
     // ACT
-    const { result } = renderHook(() => useCreateTodo(), {
+    const { result } = renderHook(() => useDeleteTodo(), {
       wrapper: createWrapper(),
     });
-    result.current.mutate({ title: 'New Todo' });
+    result.current.mutate('1');
 
     // ASSERT
     await waitFor(() => {
@@ -148,26 +135,30 @@ describe('useCreateTodo', () => {
     });
   });
 
-  it('should create todo without description', async () => {
+  it('should handle deletion of multiple todos sequentially', async () => {
     // ARRANGE
-    const newTodoData: CreateTodoData = {
-      title: 'Todo without description',
-    };
-    const todoWithoutDescription = { ...mockTodo, description: null };
-    vi.mocked(createTodo).mockResolvedValue(todoWithoutDescription);
+    vi.mocked(deleteTodo).mockResolvedValue(undefined);
 
     // ACT
-    const { result } = renderHook(() => useCreateTodo(), {
+    const { result } = renderHook(() => useDeleteTodo(), {
       wrapper: createWrapper(),
     });
-    result.current.mutate(newTodoData);
 
-    // ASSERT
+    // Delete first todo
+    result.current.mutate('1');
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(createTodo).toHaveBeenCalledWith(newTodoData);
-    expect(result.current.data?.description).toBeNull();
+    // Delete second todo
+    result.current.mutate('2');
+    await waitFor(() => {
+      expect(deleteTodo).toHaveBeenCalledWith('2');
+    });
+
+    // ASSERT
+    expect(deleteTodo).toHaveBeenCalledTimes(2);
+    expect(deleteTodo).toHaveBeenNthCalledWith(1, '1');
+    expect(deleteTodo).toHaveBeenNthCalledWith(2, '2');
   });
 });

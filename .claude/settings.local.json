@@ -4,7 +4,11 @@
       "Bash(rm:*)",
       "Bash(cat:*)",
       "Bash(npm list:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(git mv:*)",
+      "Bash(npm test:*)",
+      "Bash(timeout 10 tail:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

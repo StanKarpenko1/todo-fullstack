@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { TodoList } from './TodoList';
+import { TodoList } from '../components/TodoList';
 import type { Todo } from '../types/todo.types';
 
 // Mock TodoItem component
-vi.mock('./TodoItem', () => ({
+vi.mock('../components/TodoItem', () => ({
   TodoItem: ({ todo, onToggle, onDelete }: any) => (
     <div data-testid={`todo-item-${todo.id}`}>
       <span>{todo.title}</span>

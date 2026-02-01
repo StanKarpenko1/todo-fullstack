@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getTodos, getTodoById, createTodo, updateTodo, deleteTodo } from './todosApi';
+import { getTodos, getTodoById, createTodo, updateTodo, deleteTodo } from '../api/todosApi';
 import { apiClient } from '@/shared/api/apiClient';
 import type { Todo, CreateTodoData, UpdateTodoData } from '../types/todo.types';
 

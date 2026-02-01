@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { PublicRoute } from './PublicRoute';
+import { PublicRoute } from '../components/PublicRoute';
 import { useAuth } from '../contexts/AuthContext';
 
 // Mock useAuth

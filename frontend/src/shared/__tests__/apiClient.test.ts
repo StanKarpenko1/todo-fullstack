@@ -23,7 +23,7 @@ vi.mock('axios', () => {
 });
 
 // NOW import apiClient (after mock is set up)
-const { apiClient } = await import('./apiClient');
+const { apiClient } = await import('../api/apiClient');
 
 describe('apiClient', () => {
   beforeEach(() => {
