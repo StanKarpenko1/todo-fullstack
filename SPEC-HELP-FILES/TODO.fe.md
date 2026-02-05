@@ -180,7 +180,8 @@ frontend/
 │   │       │   ├── TodoForm.tsx
 │   │       │   └── TodoFilters.tsx
 │   │       ├── hooks/
-│   │       │   ├── useTodos.ts      # Fetch all todos
+│   │       │   ├── useTodos.ts         # Fetch all todos
+│   │       │   ├── useTodoMutation.ts  # Shared factory (DRY)
 │   │       │   ├── useCreateTodo.ts
 │   │       │   ├── useUpdateTodo.ts
 │   │       │   └── useDeleteTodo.ts
@@ -641,7 +642,7 @@ export const getTodos = async (): Promise<Todo[]> => {
 ---
 
 ### Step 4: Build React Query Hooks (TDD)
-**Files:** 4 hooks, each with test file first
+**Files:** 5 hooks total (1 query hook + 1 shared factory + 3 mutation hooks)
 **Tests:** 24 passing (5-7 tests per hook)
 **Pattern:** Test → Implement → Verify → Next hook
 
@@ -666,7 +667,34 @@ export const getTodos = async (): Promise<Todo[]> => {
 3. Run tests - all 5 passing
 4. Move to next hook
 
-#### B. useCreateTodo (Mutation Hook)
+#### B. useTodoMutation (Shared Hook Factory)
+**File:** `hooks/useTodoMutation.ts`
+**Purpose:** Eliminates code duplication across create/update/delete hooks
+
+This factory centralizes the cache invalidation logic that all three mutation hooks need:
+
+```typescript
+export const useTodoMutation = <TVariables, TData>(
+  mutationFn: (variables: TVariables) => Promise<TData>
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['todos'] });
+    },
+  });
+};
+```
+
+**Benefits:**
+- DRY principle - cache invalidation logic in one place
+- Easy to extend - add optimistic updates or error handling for all mutations at once
+- Maintainable - changes to cache strategy only need one file update
+- Type-safe - Generic types preserve type safety for each mutation
+
+#### C. useCreateTodo (Mutation Hook)
 1. Write test file: `useCreateTodo.test.tsx`
    - Test: Call API on mutation
    - Test: Return created todo
@@ -674,32 +702,37 @@ export const getTodos = async (): Promise<Todo[]> => {
    - Test: Handle loading state
    - Test: Handle errors
    - Test: Work without description
-2. Implement: `useCreateTodo.ts`
+2. Implement: `useCreateTodo.ts` (using the factory)
    ```typescript
    export const useCreateTodo = () => {
-     const queryClient = useQueryClient();
-     return useMutation({
-       mutationFn: createTodo,
-       onSuccess: () => {
-         queryClient.invalidateQueries({ queryKey: ['todos'] }); // Auto-refresh
-       },
-     });
+     return useTodoMutation(createTodo);
    };
    ```
 3. Run tests - all 6 passing
 
-#### C. useUpdateTodo (Mutation Hook)
+#### D. useUpdateTodo (Mutation Hook)
 - Same TDD pattern as create
 - Tests include toggling completion status
 - Tests multiple field updates
+- Uses factory with wrapper for API signature mismatch:
+  ```typescript
+  export const useUpdateTodo = () => {
+    return useTodoMutation(
+      ({ id, data }) => updateTodo(id, data)
+    );
+  };
+  ```
 - 7 tests passing
 
-#### D. useDeleteTodo (Mutation Hook)
+#### E. useDeleteTodo (Mutation Hook)
 - Same TDD pattern
 - Tests sequential deletions
+- Uses factory: `return useTodoMutation(deleteTodo);`
 - 6 tests passing
 
-**Why this order:** Query hook first (read), then mutations (write). Each hook builds confidence.
+**Why this order:** Query hook first (read), then shared factory (DRY), then mutations (write). Each hook builds confidence.
+
+**Refactoring note:** The factory pattern was added after initial implementation when duplication was identified across all three mutation hooks. Tests passed without modification, proving the refactoring was safe.
 
 ---
 
@@ -896,12 +929,24 @@ npm test
 14. **Hooks inform components** - Components just consume what hooks provide
 15. **Components inform page** - Page just wires components together
 
+### Code Quality & Refactoring
+16. **DRY for shared patterns** - Extract hook factories when multiple hooks share identical logic
+   - Example: `useTodoMutation` factory eliminated duplicate cache invalidation across 3 hooks
+   - Reduced each mutation hook from 18 lines to 1-3 lines
+   - Centralized cache strategy - future changes (optimistic updates, error handling) only need one file
+   - Tests passed without modification after refactoring (proof of safety)
+17. **Refactor when duplication is clear** - Don't over-engineer upfront, but refactor when patterns emerge
+   - Initial implementation: Write code that works (3 similar hooks)
+   - Identify duplication: All 3 hooks have identical `onSuccess` logic
+   - Extract abstraction: Create factory to eliminate duplication
+   - Verify: Run tests to ensure behavior unchanged
+
 ### Time Savers
-16. **Mock components in integration tests** - TodoList test mocked TodoItem (faster, simpler)
-17. **Wrapper pattern** - Reuse QueryClientProvider wrapper across all hook tests
-18. **Common test data** - Define mock todos once, reuse everywhere
-19. **AAA pattern** - Makes tests instantly readable
-20. **Run tests frequently** - Catch issues immediately, not after writing 100 lines
+18. **Mock components in integration tests** - TodoList test mocked TodoItem (faster, simpler)
+19. **Wrapper pattern** - Reuse QueryClientProvider wrapper across all hook tests
+20. **Common test data** - Define mock todos once, reuse everywhere
+21. **AAA pattern** - Makes tests instantly readable
+22. **Run tests frequently** - Catch issues immediately, not after writing 100 lines
 
 ---
 
