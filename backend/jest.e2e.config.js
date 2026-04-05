@@ -1,7 +1,7 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/tests/e2e'],
+  roots: ['<rootDir>/tests/e2e-api'],
   testMatch: ['**/*.e2e.test.ts'],
   transform: {
     '^.+\\.ts$': ['ts-jest', {
@@ -17,5 +17,5 @@ module.exports = {
     '!src/**/*.d.ts',
   ],
   // Set NODE_ENV to test (silences expected errors in logs)
-  setupFiles: ['<rootDir>/tests/e2e/jest.setup.js']
+  setupFiles: ['<rootDir>/tests/e2e-api/jest.setup.js']
 };
