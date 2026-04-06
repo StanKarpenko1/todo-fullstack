@@ -1,0 +1,24 @@
+{
+  "name": "playwright-tests",
+  "version": "1.0.0",
+  "description": "Playwright E2E tests for Todo App",
+  "scripts": {
+    "test:pw": "playwright test",
+    "test:pw:headed": "playwright test --headed",
+    "test:pw:ui": "playwright test --ui",
+    "test:pw:debug": "playwright test --debug",
+    "report:pw": "playwright show-report",
+    "codegen:pw": "playwright codegen http://localhost:5173"
+  },
+  "keywords": [
+    "playwright",
+    "e2e",
+    "testing"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@types/node": "^25.5.2"
+  }
+}
