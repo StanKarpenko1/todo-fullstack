@@ -108,6 +108,10 @@ storybook-static
 tmp/
 temp/
 
+# Scratch / planning files (working drafts, not committed)
+*.temp
+*.temp.*
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

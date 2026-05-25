@@ -1,0 +1,7 @@
+{
+  "standard": {
+    "email": "standard.user@example.com",
+    "password": "Password123!",
+    "name": "Standard User"
+  }
+}
