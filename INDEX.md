@@ -20,7 +20,7 @@ npm install
 cd backend
 npm run dev
 ```
-**Runs on:** http://localhost:5000
+**Runs on:** http://localhost:5001
 
 ### Frontend (Terminal 2)
 ```bash
@@ -54,7 +54,7 @@ npm run preview
 
 ## API Endpoints
 
-- **Health:** GET http://localhost:5000/health
-- **Register:** POST http://localhost:5000/api/auth/register
-- **Login:** POST http://localhost:5000/api/auth/login
-- **Todos:** GET/POST/PUT/DELETE http://localhost:5000/api/todos
+- **Health:** GET http://localhost:5001/health
+- **Register:** POST http://localhost:5001/api/auth/register
+- **Login:** POST http://localhost:5001/api/auth/login
+- **Todos:** GET/POST/PUT/DELETE http://localhost:5001/api/todos
